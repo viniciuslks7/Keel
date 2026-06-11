@@ -1,0 +1,226 @@
+openapi: 3.1.0
+info:
+  title: Keel Ledger API
+  version: 0.1.0
+  description: >
+    Double-entry ledger service. All amounts are integers of minor units
+    (cents). Mutating endpoints accept an Idempotency-Key header; replaying a
+    key with an identical payload returns the original transaction.
+
+servers:
+  - url: http://localhost:3000
+
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Service is up
+
+  /accounts:
+    post:
+      summary: Open a customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ownerName, currency]
+              properties:
+                ownerName: { type: string, maxLength: 120 }
+                currency: { type: string, pattern: '^[A-Z]{3}$', example: BRL }
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /accounts/{accountId}:
+    get:
+      summary: Fetch an account
+      parameters: [{ $ref: '#/components/parameters/AccountId' }]
+      responses:
+        '200':
+          description: The account
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /accounts/{accountId}/balance:
+    get:
+      summary: Current balance, derived from ledger entries
+      parameters: [{ $ref: '#/components/parameters/AccountId' }]
+      responses:
+        '200':
+          description: The balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accountId: { type: string, format: uuid }
+                  balanceCents: { type: integer }
+                  currency: { type: string }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /accounts/{accountId}/statement:
+    get:
+      summary: Paginated statement (newest first, keyset cursor)
+      parameters:
+        - { $ref: '#/components/parameters/AccountId' }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: One page of ledger entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items: { $ref: '#/components/schemas/LedgerEntry' }
+                  nextCursor:
+                    type: [string, 'null']
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+
+  /accounts/{accountId}/deposits:
+    post:
+      summary: Deposit funds (credits the account against the treasury)
+      parameters:
+        - { $ref: '#/components/parameters/AccountId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody: { $ref: '#/components/requestBodies/MoneyMovement' }
+      responses:
+        '201':
+          description: Posted transaction
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Transaction' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
+  /accounts/{accountId}/withdrawals:
+    post:
+      summary: Withdraw funds (fails with 422 on insufficient balance)
+      parameters:
+        - { $ref: '#/components/parameters/AccountId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody: { $ref: '#/components/requestBodies/MoneyMovement' }
+      responses:
+        '201':
+          description: Posted transaction
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Transaction' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+  /transfers:
+    post:
+      summary: Atomic transfer between two accounts of the same currency
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fromAccountId, toAccountId, amountCents]
+              properties:
+                fromAccountId: { type: string, format: uuid }
+                toAccountId: { type: string, format: uuid }
+                amountCents: { type: integer, minimum: 1 }
+      responses:
+        '201':
+          description: Posted transaction
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Transaction' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
+components:
+  parameters:
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string, maxLength: 255 }
+
+  requestBodies:
+    MoneyMovement:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [amountCents]
+            properties:
+              amountCents: { type: integer, minimum: 1 }
+
+  responses:
+    Problem:
+      description: RFC 9457 problem document
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            properties:
+              type: { type: string }
+              title: { type: string }
+              status: { type: integer }
+              detail: { type: string }
+
+  schemas:
+    Account:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ownerName: { type: string }
+        currency: { type: string }
+        status: { type: string, enum: [ACTIVE, CLOSED] }
+        createdAt: { type: string, format: date-time }
+
+    LedgerEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid }
+        accountId: { type: string, format: uuid }
+        direction: { type: string, enum: [DEBIT, CREDIT] }
+        amountCents: { type: integer }
+        currency: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    Transaction:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [DEPOSIT, WITHDRAWAL, TRANSFER] }
+        idempotencyKey: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        entries:
+          type: array
+          items: { $ref: '#/components/schemas/LedgerEntry' }
