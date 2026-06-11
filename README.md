@@ -2,7 +2,7 @@
 
 > A double-entry ledger service that makes losing money a type error.
 
-[![CI](https://github.com/USERNAME/keel/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/keel/actions/workflows/ci.yml)
+[![CI](https://github.com/viniciuslks7/keel/actions/workflows/ci.yml/badge.svg)](https://github.com/viniciuslks7/keel/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-raw%20SQL-4169E1?logo=postgresql&logoColor=white)
