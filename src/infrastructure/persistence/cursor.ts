@@ -11,13 +11,18 @@ export interface StatementCursor {
   readonly id: string;
 }
 
+// base64url over btoa/atob (available in Node ≥18 and every browser) keeps the
+// cursor codec free of Node's Buffer, so the same persistence code runs
+// unchanged in the browser demo. Payloads are pure ASCII (an ISO date + a
+// UUID), so no UTF-8 escaping is needed.
 export function encodeCursor(cursor: StatementCursor): string {
-  return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
+  return btoa(JSON.stringify(cursor)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 }
 
 export function decodeCursor(raw: string): StatementCursor {
   try {
-    const parsed: unknown = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
+    const base64 = raw.replaceAll('-', '+').replaceAll('_', '/');
+    const parsed: unknown = JSON.parse(atob(base64));
     if (
       typeof parsed === 'object' &&
       parsed !== null &&

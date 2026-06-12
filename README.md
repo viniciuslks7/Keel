@@ -7,6 +7,12 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-raw%20SQL-4169E1?logo=postgresql&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
+[![Live demo](https://img.shields.io/badge/demo-live-2dd4bf)](https://viniciuslks7.github.io/keel/)
+
+**▶ [Try the live demo](https://viniciuslks7.github.io/keel/)** — open accounts, deposit,
+withdraw, transfer and page through statements right in the browser. There is no backend:
+the **same** domain and use-case code that runs on the server is compiled to run client-side
+against the in-memory adapter.
 
 Keel is the bookkeeping core of a digital wallet: accounts, deposits,
 withdrawals and transfers, built the way payment companies actually build
@@ -157,6 +163,21 @@ npm test           # 40 tests, in-memory, ~1s
 npm run typecheck  # strict TS, NodeNext ESM
 npm run lint       # Biome
 ```
+
+**Demo UI (no database, runs in the browser):**
+
+```bash
+npm run preview:demo   # build the bundle + serve at http://localhost:4173
+# or just build the static bundle into public/:
+npm run build:demo
+```
+
+The demo is a single static page (`public/index.html`) plus a bundle
+(`demo/main.ts`) that wires the in-memory adapter into the use cases and exposes
+them on `window`. esbuild compiles the real `src/domain` and `src/application`
+code to run in the browser — the ledger's invariants (balanced postings,
+idempotent retries, overdraft protection) hold client-side exactly as they do on
+the server. It deploys to GitHub Pages from `.github/workflows/pages.yml`.
 
 ## Tech choices, briefly
 
