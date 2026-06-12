@@ -19,6 +19,13 @@ export const transferBody = z.object({
   amountCents: z.number().int().positive(),
 });
 
+export const exchangeBody = z.object({
+  fromAccountId: z.string().uuid(),
+  toAccountId: z.string().uuid(),
+  fromAmountCents: z.number().int().positive(),
+  rate: z.number().positive().finite(),
+});
+
 export const statementQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   cursor: z.string().min(1).optional(),

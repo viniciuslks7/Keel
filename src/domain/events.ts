@@ -40,6 +40,17 @@ export type DomainEvent = EventEnvelope &
         readonly currency: string;
         readonly transactionId: string;
       }
+    | {
+        readonly type: 'FundsExchanged';
+        readonly fromAccountId: string;
+        readonly toAccountId: string;
+        readonly fromAmountCents: number;
+        readonly fromCurrency: string;
+        readonly toAmountCents: number;
+        readonly toCurrency: string;
+        readonly rate: number;
+        readonly transactionId: string;
+      }
   );
 
 export type DomainEventType = DomainEvent['type'];

@@ -10,6 +10,10 @@ import {
   DepositFunds,
   type DepositFundsInput,
 } from '../src/application/use-cases/deposit-funds.js';
+import {
+  ExchangeFunds,
+  type ExchangeFundsInput,
+} from '../src/application/use-cases/exchange-funds.js';
 import { GetAccount } from '../src/application/use-cases/get-account.js';
 import { type BalanceView, GetBalance } from '../src/application/use-cases/get-balance.js';
 import {
@@ -57,6 +61,7 @@ export interface KeelDemo {
   deposit(input: DepositFundsInput): Promise<Transaction>;
   withdraw(input: WithdrawFundsInput): Promise<Transaction>;
   transfer(input: TransferFundsInput): Promise<Transaction>;
+  exchange(input: ExchangeFundsInput): Promise<Transaction>;
   statement(input: GetStatementInput): Promise<StatementPage>;
 }
 
@@ -74,6 +79,7 @@ async function createKeel(currencies: readonly string[] = ['BRL', 'USD']): Promi
   const depositFunds = new DepositFunds(uow, ids, clock);
   const withdrawFunds = new WithdrawFunds(uow, ids, clock);
   const transferFunds = new TransferFunds(uow, ids, clock);
+  const exchangeFunds = new ExchangeFunds(uow, ids, clock);
   const getStatement = new GetStatement(uow);
 
   return {
@@ -85,6 +91,7 @@ async function createKeel(currencies: readonly string[] = ['BRL', 'USD']): Promi
     deposit: (input) => depositFunds.execute(input),
     withdraw: (input) => withdrawFunds.execute(input),
     transfer: (input) => transferFunds.execute(input),
+    exchange: (input) => exchangeFunds.execute(input),
     statement: (input) => getStatement.execute(input),
   };
 }

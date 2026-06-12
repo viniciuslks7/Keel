@@ -4,6 +4,7 @@ import { OutboxRelay } from './application/outbox-relay.js';
 import { CloseAccount } from './application/use-cases/close-account.js';
 import { CreateAccount } from './application/use-cases/create-account.js';
 import { DepositFunds } from './application/use-cases/deposit-funds.js';
+import { ExchangeFunds } from './application/use-cases/exchange-funds.js';
 import { GetAccount } from './application/use-cases/get-account.js';
 import { GetBalance } from './application/use-cases/get-balance.js';
 import { GetStatement } from './application/use-cases/get-statement.js';
@@ -42,6 +43,7 @@ async function main(): Promise<void> {
       depositFunds: new DepositFunds(uow, ids, clock),
       withdrawFunds: new WithdrawFunds(uow, ids, clock),
       transferFunds: new TransferFunds(uow, ids, clock),
+      exchangeFunds: new ExchangeFunds(uow, ids, clock),
       getBalance: new GetBalance(uow),
       getStatement: new GetStatement(uow),
     },

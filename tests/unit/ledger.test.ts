@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CurrencyMismatchError, UnbalancedTransactionError } from '../../src/domain/errors.js';
+import { UnbalancedTransactionError } from '../../src/domain/errors.js';
 import { type PostingLeg, postTransaction } from '../../src/domain/ledger.js';
 import { Money } from '../../src/domain/money.js';
 
@@ -41,13 +41,31 @@ describe('postTransaction', () => {
     ).toThrow(UnbalancedTransactionError);
   });
 
-  it('rejects mixed currencies in one transaction', () => {
+  it('rejects a posting that does not balance within each currency', () => {
+    // Each currency is lopsided on its own: BRL has only a debit, USD only a
+    // credit. The transaction creates money in one currency and destroys it in
+    // another, which is exactly what the per-currency balance rule forbids.
     expect(() =>
       post([
         { accountId: 'a', direction: 'DEBIT', amount: Money.of(500, 'BRL') },
         { accountId: 'b', direction: 'CREDIT', amount: Money.of(500, 'USD') },
       ]),
-    ).toThrow(CurrencyMismatchError);
+    ).toThrow(UnbalancedTransactionError);
+  });
+
+  it('accepts a cross-currency posting that balances each currency on its own', () => {
+    // The shape of an FX transfer: BRL nets to zero (debit a, credit treasury)
+    // and USD nets to zero (debit treasury, credit b), at an implied 1:2 rate.
+    const tx = post(
+      [
+        { accountId: 'a', direction: 'DEBIT', amount: Money.of(500, 'BRL') },
+        { accountId: 'brl-treasury', direction: 'CREDIT', amount: Money.of(500, 'BRL') },
+        { accountId: 'usd-treasury', direction: 'DEBIT', amount: Money.of(1000, 'USD') },
+        { accountId: 'b', direction: 'CREDIT', amount: Money.of(1000, 'USD') },
+      ],
+      ['e1', 'e2', 'e3', 'e4'],
+    );
+    expect(tx.entries).toHaveLength(4);
   });
 
   it('rejects non-positive legs even when they balance', () => {

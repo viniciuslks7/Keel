@@ -86,7 +86,8 @@ Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 double-entry over balance columns, hexagonal layering, integer minor units,
 the idempotency/locking strategy, zero-balance account closing, the
 transactional outbox for domain events, OpenTelemetry tracing around the
-unit of work, and materialized running balances for hot accounts.
+unit of work, materialized running balances for hot accounts, and
+cross-currency transfers that balance per currency.
 
 ## How the ledger works
 
@@ -120,7 +121,8 @@ Full spec: [`docs/openapi.yaml`](docs/openapi.yaml). Errors follow
 | `GET` | `/accounts/:id/statement` | Keyset-paginated statement |
 | `POST` | `/accounts/:id/deposits` | Deposit (idempotent) |
 | `POST` | `/accounts/:id/withdrawals` | Withdraw (idempotent, no overdraft) |
-| `POST` | `/transfers` | Atomic transfer (idempotent) |
+| `POST` | `/transfers` | Atomic same-currency transfer (idempotent) |
+| `POST` | `/exchanges` | Cross-currency transfer at an FX rate (idempotent) |
 | `GET` | `/health` | Liveness probe |
 
 ```bash
@@ -196,7 +198,7 @@ the server. It deploys to GitHub Pages from `.github/workflows/pages.yml`.
 
 - [x] Account closing with zero-balance enforcement
 - [x] Balance snapshots for hot accounts (materialized running balances)
-- [ ] Multi-currency transfers via FX rate legs
+- [x] Multi-currency transfers via FX rate legs
 - [x] Outbox + event publishing for downstream consumers
 - [x] OpenTelemetry traces around units of work
 

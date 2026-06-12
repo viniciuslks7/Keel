@@ -1,4 +1,4 @@
-import { CurrencyMismatchError, UnbalancedTransactionError } from './errors.js';
+import { UnbalancedTransactionError } from './errors.js';
 import type { Money } from './money.js';
 import type { EntryDirection, LedgerEntry, Transaction, TransactionType } from './transaction.js';
 
@@ -18,10 +18,12 @@ export interface PostingInput {
 }
 
 /**
- * The single place where ledger entries are created. Enforces the two
- * invariants of double-entry bookkeeping: every leg shares one currency and
- * debits equal credits to the cent. Anything that violates this cannot be
- * persisted, by construction.
+ * The single place where ledger entries are created. Enforces the invariant of
+ * double-entry bookkeeping: debits equal credits to the cent **within every
+ * currency** the transaction touches. A single-currency posting is the common
+ * case; a cross-currency one (an FX transfer) balances each currency on its own
+ * leg pair, so money is still never created or destroyed (see ADR-0009).
+ * Anything that violates this cannot be persisted, by construction.
  */
 export function postTransaction(input: PostingInput): Transaction {
   const { id, type, idempotencyKey, legs, entryIds, createdAt } = input;
@@ -33,28 +35,22 @@ export function postTransaction(input: PostingInput): Transaction {
     throw new UnbalancedTransactionError('one entry id must be supplied per posting leg');
   }
 
-  const currency = legs[0]?.amount.currency;
-  let debits = 0;
-  let credits = 0;
-
+  // Net debits minus credits per currency; every bucket must end at zero.
+  const netByCurrency = new Map<string, number>();
   for (const leg of legs) {
-    if (leg.amount.currency !== currency) {
-      throw new CurrencyMismatchError('all legs of a transaction must share a single currency');
-    }
     if (!leg.amount.isPositive()) {
       throw new UnbalancedTransactionError('every posting leg must move a positive amount');
     }
-    if (leg.direction === 'DEBIT') {
-      debits += leg.amount.cents;
-    } else {
-      credits += leg.amount.cents;
-    }
+    const signed = leg.direction === 'DEBIT' ? leg.amount.cents : -leg.amount.cents;
+    netByCurrency.set(leg.amount.currency, (netByCurrency.get(leg.amount.currency) ?? 0) + signed);
   }
 
-  if (debits !== credits) {
-    throw new UnbalancedTransactionError(
-      `debits (${debits}) and credits (${credits}) do not balance`,
-    );
+  for (const [currency, net] of netByCurrency) {
+    if (net !== 0) {
+      throw new UnbalancedTransactionError(
+        `${currency} legs do not balance: debits and credits differ by ${net} cents`,
+      );
+    }
   }
 
   const entries: LedgerEntry[] = legs.map((leg, index) => ({

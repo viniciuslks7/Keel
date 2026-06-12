@@ -4,6 +4,12 @@ import type { TransactionRepository } from './ports/transaction-repository.js';
 
 export interface IdempotentRequestShape {
   readonly type: TransactionType;
+  /**
+   * Total credited cents the operation produces, summed across all its legs.
+   * For a single-currency movement this equals the amount moved; for a
+   * cross-currency exchange it is the source leg plus the converted
+   * destination leg. Used only as a replay fingerprint, never as money.
+   */
   readonly amountCents: number;
   readonly accountIds: readonly string[];
 }

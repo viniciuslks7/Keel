@@ -5,6 +5,7 @@ import type { IdGenerator } from '../../src/application/ports/id-generator.js';
 import { CloseAccount } from '../../src/application/use-cases/close-account.js';
 import { CreateAccount } from '../../src/application/use-cases/create-account.js';
 import { DepositFunds } from '../../src/application/use-cases/deposit-funds.js';
+import { ExchangeFunds } from '../../src/application/use-cases/exchange-funds.js';
 import { GetAccount } from '../../src/application/use-cases/get-account.js';
 import { GetBalance } from '../../src/application/use-cases/get-balance.js';
 import { GetStatement } from '../../src/application/use-cases/get-statement.js';
@@ -42,6 +43,7 @@ export interface TestContext {
   depositFunds: DepositFunds;
   withdrawFunds: WithdrawFunds;
   transferFunds: TransferFunds;
+  exchangeFunds: ExchangeFunds;
   getBalance: GetBalance;
   getStatement: GetStatement;
 }
@@ -64,6 +66,7 @@ export async function buildTestContext(
     depositFunds: new DepositFunds(uow, ids, clock),
     withdrawFunds: new WithdrawFunds(uow, ids, clock),
     transferFunds: new TransferFunds(uow, ids, clock),
+    exchangeFunds: new ExchangeFunds(uow, ids, clock),
     getBalance: new GetBalance(uow),
     getStatement: new GetStatement(uow),
   };

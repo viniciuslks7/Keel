@@ -170,6 +170,37 @@ paths:
         '409': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
 
+  /exchanges:
+    post:
+      summary: Cross-currency transfer at a given FX rate
+      description: >
+        Moves money between two accounts of different currencies. The
+        destination is credited round(fromAmountCents * rate); each currency
+        balances on its own leg pair through the per-currency treasuries.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fromAccountId, toAccountId, fromAmountCents, rate]
+              properties:
+                fromAccountId: { type: string, format: uuid }
+                toAccountId: { type: string, format: uuid }
+                fromAmountCents: { type: integer, minimum: 1 }
+                rate: { type: number, exclusiveMinimum: 0 }
+      responses:
+        '201':
+          description: Posted transaction
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Transaction' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+
 components:
   parameters:
     AccountId:

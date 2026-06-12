@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type { CloseAccount } from '../../application/use-cases/close-account.js';
 import type { CreateAccount } from '../../application/use-cases/create-account.js';
 import type { DepositFunds } from '../../application/use-cases/deposit-funds.js';
+import type { ExchangeFunds } from '../../application/use-cases/exchange-funds.js';
 import type { GetAccount } from '../../application/use-cases/get-account.js';
 import type { GetBalance } from '../../application/use-cases/get-balance.js';
 import type { GetStatement } from '../../application/use-cases/get-statement.js';
@@ -9,6 +10,7 @@ import type { TransferFunds } from '../../application/use-cases/transfer-funds.j
 import type { WithdrawFunds } from '../../application/use-cases/withdraw-funds.js';
 import { errorHandler } from './error-handler.js';
 import { registerAccountRoutes } from './routes/accounts.js';
+import { registerExchangeRoutes } from './routes/exchanges.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerTransferRoutes } from './routes/transfers.js';
 
@@ -23,6 +25,7 @@ export interface AppDependencies {
   readonly depositFunds: DepositFunds;
   readonly withdrawFunds: WithdrawFunds;
   readonly transferFunds: TransferFunds;
+  readonly exchangeFunds: ExchangeFunds;
   readonly getBalance: GetBalance;
   readonly getStatement: GetStatement;
 }
@@ -38,6 +41,7 @@ export function buildApp(deps: AppDependencies, options: AppOptions = {}): Fasti
   registerHealthRoutes(app);
   registerAccountRoutes(app, deps);
   registerTransferRoutes(app, deps);
+  registerExchangeRoutes(app, deps);
 
   return app;
 }

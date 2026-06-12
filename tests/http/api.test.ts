@@ -163,6 +163,42 @@ describe('HTTP API', () => {
     expect(bobBalance.json().balanceCents).toBe(7_500);
   });
 
+  it('POST /exchanges converts money across currencies', async () => {
+    const alice = await createAccount('BRL');
+    const bob = await createAccount('USD');
+    await app.inject({
+      method: 'POST',
+      url: `/accounts/${alice}/deposits`,
+      payload: { amountCents: 100_00 },
+    });
+
+    const exchange = await app.inject({
+      method: 'POST',
+      url: '/exchanges',
+      payload: { fromAccountId: alice, toAccountId: bob, fromAmountCents: 50_00, rate: 0.2 },
+    });
+    expect(exchange.statusCode).toBe(201);
+    expect(exchange.json().type).toBe('TRANSFER');
+
+    const aliceBalance = await app.inject({ method: 'GET', url: `/accounts/${alice}/balance` });
+    const bobBalance = await app.inject({ method: 'GET', url: `/accounts/${bob}/balance` });
+    expect(aliceBalance.json().balanceCents).toBe(50_00);
+    expect(bobBalance.json().balanceCents).toBe(10_00);
+  });
+
+  it('POST /exchanges rejects a same-currency pair with problem+json', async () => {
+    const alice = await createAccount('BRL');
+    const bob = await createAccount('BRL');
+
+    const exchange = await app.inject({
+      method: 'POST',
+      url: '/exchanges',
+      payload: { fromAccountId: alice, toAccountId: bob, fromAmountCents: 1_00, rate: 1 },
+    });
+    expect(exchange.statusCode).toBe(422);
+    expect(exchange.json().title).toBe('CURRENCY_MISMATCH');
+  });
+
   it('honours the Idempotency-Key header on replays', async () => {
     const accountId = await createAccount();
 
