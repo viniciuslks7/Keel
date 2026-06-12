@@ -12,7 +12,9 @@ import { WithdrawFunds } from './application/use-cases/withdraw-funds.js';
 import { loadEnv } from './config/env.js';
 import { buildApp } from './infrastructure/http/app.js';
 import { LoggingEventPublisher } from './infrastructure/messaging/logging-event-publisher.js';
+import { OtelTracer } from './infrastructure/observability/otel-tracer.js';
 import { PostgresUnitOfWork } from './infrastructure/persistence/postgres/postgres-unit-of-work.js';
+import { TracingUnitOfWork } from './infrastructure/persistence/tracing-unit-of-work.js';
 import { SystemClock } from './infrastructure/system/system-clock.js';
 import { UuidGenerator } from './infrastructure/system/uuid-generator.js';
 
@@ -24,7 +26,9 @@ async function main(): Promise<void> {
   const env = loadEnv();
 
   const pool = new pg.Pool({ connectionString: env.DATABASE_URL });
-  const uow = new PostgresUnitOfWork(pool);
+  // Every unit of work runs inside a span; the OpenTelemetry API no-ops until a
+  // provider is registered, so this is free unless a deployment opts in.
+  const uow = new TracingUnitOfWork(new PostgresUnitOfWork(pool), new OtelTracer());
   const clock = new SystemClock();
   const ids = new UuidGenerator();
 

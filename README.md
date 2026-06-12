@@ -84,8 +84,9 @@ runs in-memory in ~1 second** — same transactional semantics (serialization
 
 Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 double-entry over balance columns, hexagonal layering, integer minor units,
-the idempotency/locking strategy, zero-balance account closing, and the
-transactional outbox for domain events.
+the idempotency/locking strategy, zero-balance account closing, the
+transactional outbox for domain events, and OpenTelemetry tracing around the
+unit of work.
 
 ## How the ledger works
 
@@ -197,7 +198,7 @@ the server. It deploys to GitHub Pages from `.github/workflows/pages.yml`.
 - [ ] Balance snapshots for hot accounts (materialized running balances)
 - [ ] Multi-currency transfers via FX rate legs
 - [x] Outbox + event publishing for downstream consumers
-- [ ] OpenTelemetry traces around units of work
+- [x] OpenTelemetry traces around units of work
 
 ## License
 

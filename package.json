@@ -21,6 +21,7 @@
     "migrate": "tsx scripts/migrate.ts"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
     "fastify": "^5.2.0",
     "pg": "^8.13.0",
     "zod": "^3.25.0"
