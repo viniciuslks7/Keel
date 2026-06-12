@@ -11,6 +11,7 @@ interface Snapshot {
   accounts: Map<string, Account>;
   transactions: Transaction[];
   outbox: OutboxRecord[];
+  balances: Map<string, number>;
 }
 
 /**
@@ -21,12 +22,17 @@ export class InMemoryStore {
   accounts = new Map<string, Account>();
   transactions: Transaction[] = [];
   outbox: OutboxRecord[] = [];
+  // Materialized running balance per account, kept in step with `transactions`
+  // by the transaction repository (see ADR-0008). A derived cache, not a second
+  // source of truth: it always equals the signed sum of an account's entries.
+  balances = new Map<string, number>();
 
   snapshot(): Snapshot {
     return {
       accounts: new Map(this.accounts),
       transactions: [...this.transactions],
       outbox: this.outbox.map((record) => ({ ...record })),
+      balances: new Map(this.balances),
     };
   }
 
@@ -34,5 +40,6 @@ export class InMemoryStore {
     this.accounts = snapshot.accounts;
     this.transactions = snapshot.transactions;
     this.outbox = snapshot.outbox;
+    this.balances = snapshot.balances;
   }
 }

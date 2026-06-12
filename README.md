@@ -35,7 +35,7 @@ alternative, end to end, in ~1.5k lines of strict TypeScript.
 | No deadlocks between transfers | Locks always acquired in ascending account-id order — deterministic ordering makes deadlock impossible by construction |
 | Client retries never double-post | `Idempotency-Key` header backed by a unique constraint; identical replays return the original transaction, divergent reuse gets `409` |
 | No floating-point money | `Money` value object holds integer minor units only; fractional or unsafe amounts are rejected at construction |
-| Full audit trail | Entries are append-only — no UPDATE/DELETE path exists; balances are always `SUM()` over entries |
+| Full audit trail | Entries are append-only — no UPDATE/DELETE path exists; every balance always reconciles to `SUM()` over entries (the materialized total is a cache rebuilt from them) |
 
 ## Architecture
 
@@ -85,8 +85,8 @@ runs in-memory in ~1 second** — same transactional semantics (serialization
 Key design decisions are documented as ADRs in [`docs/adr/`](docs/adr/):
 double-entry over balance columns, hexagonal layering, integer minor units,
 the idempotency/locking strategy, zero-balance account closing, the
-transactional outbox for domain events, and OpenTelemetry tracing around the
-unit of work.
+transactional outbox for domain events, OpenTelemetry tracing around the
+unit of work, and materialized running balances for hot accounts.
 
 ## How the ledger works
 
@@ -195,7 +195,7 @@ the server. It deploys to GitHub Pages from `.github/workflows/pages.yml`.
 ## Roadmap
 
 - [x] Account closing with zero-balance enforcement
-- [ ] Balance snapshots for hot accounts (materialized running balances)
+- [x] Balance snapshots for hot accounts (materialized running balances)
 - [ ] Multi-currency transfers via FX rate legs
 - [x] Outbox + event publishing for downstream consumers
 - [x] OpenTelemetry traces around units of work

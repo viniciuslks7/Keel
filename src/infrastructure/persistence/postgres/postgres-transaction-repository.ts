@@ -39,6 +39,7 @@ export class PostgresTransactionRepository implements TransactionRepository {
       [transaction.id, transaction.type, transaction.idempotencyKey, transaction.createdAt],
     );
 
+    const deltas = new Map<string, number>();
     for (const entry of transaction.entries) {
       await this.client.query(
         `INSERT INTO ledger_entries
@@ -53,6 +54,23 @@ export class PostgresTransactionRepository implements TransactionRepository {
           entry.currency,
           entry.createdAt,
         ],
+      );
+      const signed = entry.direction === 'CREDIT' ? entry.amountCents : -entry.amountCents;
+      deltas.set(entry.accountId, (deltas.get(entry.accountId) ?? 0) + signed);
+    }
+
+    // Apply the net change to each touched account's materialized balance in the
+    // same transaction as the entries, so the cache commits or rolls back with
+    // them. The callers already hold a FOR UPDATE lock on every account they
+    // touch, which serializes concurrent writers to the same balance row.
+    for (const [accountId, delta] of deltas) {
+      await this.client.query(
+        `INSERT INTO account_balances (account_id, balance_cents, updated_at)
+         VALUES ($1, $2, now())
+         ON CONFLICT (account_id) DO UPDATE
+           SET balance_cents = account_balances.balance_cents + EXCLUDED.balance_cents,
+               updated_at = now()`,
+        [accountId, delta],
       );
     }
   }
@@ -81,13 +99,12 @@ export class PostgresTransactionRepository implements TransactionRepository {
   }
 
   async balanceOf(accountId: string): Promise<number> {
-    // node-pg returns BIGINT aggregates as strings to avoid silent precision
-    // loss, so the sum is parsed explicitly here.
+    // O(1) read off the materialized balance instead of scanning every entry.
+    // node-pg returns BIGINT as a string to avoid silent precision loss, so the
+    // value is parsed explicitly here.
     const result = await this.client.query<{ balance: string }>(
-      `SELECT COALESCE(
-         SUM(CASE WHEN direction = 'CREDIT' THEN amount_cents ELSE -amount_cents END), 0
-       ) AS balance
-       FROM ledger_entries
+      `SELECT COALESCE(balance_cents, 0) AS balance
+       FROM account_balances
        WHERE account_id = $1`,
       [accountId],
     );

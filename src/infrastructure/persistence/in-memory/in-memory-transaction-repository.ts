@@ -7,7 +7,9 @@ import type { LedgerEntry, Transaction } from '../../../domain/transaction.js';
 import { decodeCursor, encodeCursor } from '../cursor.js';
 
 export class InMemoryTransactionRepository implements TransactionRepository {
-  constructor(private readonly store: { transactions: Transaction[] }) {}
+  constructor(
+    private readonly store: { transactions: Transaction[]; balances: Map<string, number> },
+  ) {}
 
   async save(transaction: Transaction): Promise<void> {
     if (
@@ -17,6 +19,15 @@ export class InMemoryTransactionRepository implements TransactionRepository {
       throw new Error(`duplicate idempotency key: ${transaction.idempotencyKey}`);
     }
     this.store.transactions.push(transaction);
+    // Fold the entries into the materialized running balances. This commits or
+    // rolls back with `transactions` because the store snapshots both together.
+    for (const entry of transaction.entries) {
+      const delta = entry.direction === 'CREDIT' ? entry.amountCents : -entry.amountCents;
+      this.store.balances.set(
+        entry.accountId,
+        (this.store.balances.get(entry.accountId) ?? 0) + delta,
+      );
+    }
   }
 
   async findByIdempotencyKey(key: string): Promise<Transaction | null> {
@@ -24,15 +35,8 @@ export class InMemoryTransactionRepository implements TransactionRepository {
   }
 
   async balanceOf(accountId: string): Promise<number> {
-    let balance = 0;
-    for (const transaction of this.store.transactions) {
-      for (const entry of transaction.entries) {
-        if (entry.accountId === accountId) {
-          balance += entry.direction === 'CREDIT' ? entry.amountCents : -entry.amountCents;
-        }
-      }
-    }
-    return balance;
+    // O(1) read off the materialized balance instead of summing every entry.
+    return this.store.balances.get(accountId) ?? 0;
   }
 
   async statementOf(query: StatementQuery): Promise<StatementPage> {
