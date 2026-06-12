@@ -2,14 +2,14 @@
 
 > A double-entry ledger service that makes losing money a type error.
 
-[![CI](https://github.com/viniciuslks7/keel/actions/workflows/ci.yml/badge.svg)](https://github.com/viniciuslks7/keel/actions/workflows/ci.yml)
+[![CI](https://github.com/viniciuslks7/Keel/actions/workflows/ci.yml/badge.svg)](https://github.com/viniciuslks7/Keel/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-raw%20SQL-4169E1?logo=postgresql&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-blue)
-[![Live demo](https://img.shields.io/badge/demo-live-2dd4bf)](https://viniciuslks7.github.io/keel/)
+[![Live demo](https://img.shields.io/badge/demo-live-2dd4bf)](https://viniciuslks7.github.io/Keel/)
 
-**▶ [Try the live demo](https://viniciuslks7.github.io/keel/)** — open accounts, deposit,
+**▶ [Try the live demo](https://viniciuslks7.github.io/Keel/)** — open accounts, deposit,
 withdraw, transfer and page through statements right in the browser. There is no backend:
 the **same** domain and use-case code that runs on the server is compiled to run client-side
 against the in-memory adapter.
