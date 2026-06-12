@@ -60,7 +60,7 @@ export async function buildTestContext(
     ids,
     createAccount: new CreateAccount(uow, ids, clock),
     getAccount: new GetAccount(uow),
-    closeAccount: new CloseAccount(uow),
+    closeAccount: new CloseAccount(uow, ids, clock),
     depositFunds: new DepositFunds(uow, ids, clock),
     withdrawFunds: new WithdrawFunds(uow, ids, clock),
     transferFunds: new TransferFunds(uow, ids, clock),

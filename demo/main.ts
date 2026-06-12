@@ -69,7 +69,7 @@ async function createKeel(currencies: readonly string[] = ['BRL', 'USD']): Promi
 
   const createAccount = new CreateAccount(uow, ids, clock);
   const getAccount = new GetAccount(uow);
-  const closeAccount = new CloseAccount(uow);
+  const closeAccount = new CloseAccount(uow, ids, clock);
   const getBalance = new GetBalance(uow);
   const depositFunds = new DepositFunds(uow, ids, clock);
   const withdrawFunds = new WithdrawFunds(uow, ids, clock);

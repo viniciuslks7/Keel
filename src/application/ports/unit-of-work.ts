@@ -1,9 +1,11 @@
 import type { AccountRepository } from './account-repository.js';
+import type { OutboxRepository } from './outbox-repository.js';
 import type { TransactionRepository } from './transaction-repository.js';
 
 export interface TransactionalRepositories {
   readonly accounts: AccountRepository;
   readonly transactions: TransactionRepository;
+  readonly outbox: OutboxRepository;
 }
 
 /**

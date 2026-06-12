@@ -26,7 +26,7 @@ export class WithdrawFunds {
       throw new InvalidAmountError('withdrawal amount must be a positive integer of cents');
     }
 
-    return this.uow.run(async ({ accounts, transactions }) => {
+    return this.uow.run(async ({ accounts, transactions, outbox }) => {
       const replayed = await findReplayedTransaction(transactions, input.idempotencyKey, {
         type: 'WITHDRAWAL',
         amountCents: input.amountCents,
@@ -61,6 +61,15 @@ export class WithdrawFunds {
       });
 
       await transactions.save(transaction);
+      await outbox.add({
+        id: this.ids.next(),
+        occurredAt: this.clock.now(),
+        type: 'FundsWithdrawn',
+        accountId: account.id,
+        amountCents: input.amountCents,
+        currency: account.currency,
+        transactionId: transaction.id,
+      });
       return transaction;
     });
   }

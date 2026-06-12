@@ -4,6 +4,7 @@ import type {
   UnitOfWork,
 } from '../../../application/ports/unit-of-work.js';
 import { PostgresAccountRepository } from './postgres-account-repository.js';
+import { PostgresOutboxRepository } from './postgres-outbox-repository.js';
 import { PostgresTransactionRepository } from './postgres-transaction-repository.js';
 
 export class PostgresUnitOfWork implements UnitOfWork {
@@ -16,6 +17,7 @@ export class PostgresUnitOfWork implements UnitOfWork {
       const repos: TransactionalRepositories = {
         accounts: new PostgresAccountRepository(client),
         transactions: new PostgresTransactionRepository(client),
+        outbox: new PostgresOutboxRepository(client),
       };
       const result = await work(repos);
       await client.query('COMMIT');

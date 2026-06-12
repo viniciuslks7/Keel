@@ -4,13 +4,19 @@ import {
   AccountNotFoundError,
   SystemAccountProtectedError,
 } from '../../domain/errors.js';
+import type { Clock } from '../ports/clock.js';
+import type { IdGenerator } from '../ports/id-generator.js';
 import type { UnitOfWork } from '../ports/unit-of-work.js';
 
 export class CloseAccount {
-  constructor(private readonly uow: UnitOfWork) {}
+  constructor(
+    private readonly uow: UnitOfWork,
+    private readonly ids: IdGenerator,
+    private readonly clock: Clock,
+  ) {}
 
   async execute(accountId: string): Promise<Account> {
-    return this.uow.run(async ({ accounts, transactions }) => {
+    return this.uow.run(async ({ accounts, transactions, outbox }) => {
       const account = await accounts.findById(accountId);
       if (!account) {
         throw new AccountNotFoundError(accountId);
@@ -33,6 +39,12 @@ export class CloseAccount {
       }
 
       await accounts.updateStatus(accountId, 'CLOSED');
+      await outbox.add({
+        id: this.ids.next(),
+        occurredAt: this.clock.now(),
+        type: 'AccountClosed',
+        accountId,
+      });
       return { ...account, status: 'CLOSED' };
     });
   }

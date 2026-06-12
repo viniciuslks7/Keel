@@ -26,7 +26,7 @@ export class DepositFunds {
       throw new InvalidAmountError('deposit amount must be a positive integer of cents');
     }
 
-    return this.uow.run(async ({ accounts, transactions }) => {
+    return this.uow.run(async ({ accounts, transactions, outbox }) => {
       const replayed = await findReplayedTransaction(transactions, input.idempotencyKey, {
         type: 'DEPOSIT',
         amountCents: input.amountCents,
@@ -54,6 +54,15 @@ export class DepositFunds {
       });
 
       await transactions.save(transaction);
+      await outbox.add({
+        id: this.ids.next(),
+        occurredAt: this.clock.now(),
+        type: 'FundsDeposited',
+        accountId: account.id,
+        amountCents: input.amountCents,
+        currency: account.currency,
+        transactionId: transaction.id,
+      });
       return transaction;
     });
   }

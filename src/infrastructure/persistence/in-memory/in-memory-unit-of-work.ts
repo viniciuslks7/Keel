@@ -3,6 +3,7 @@ import type {
   UnitOfWork,
 } from '../../../application/ports/unit-of-work.js';
 import { InMemoryAccountRepository } from './in-memory-account-repository.js';
+import { InMemoryOutboxRepository } from './in-memory-outbox-repository.js';
 import { InMemoryStore } from './in-memory-store.js';
 import { InMemoryTransactionRepository } from './in-memory-transaction-repository.js';
 
@@ -19,6 +20,7 @@ export class InMemoryUnitOfWork implements UnitOfWork {
     this.repos = {
       accounts: new InMemoryAccountRepository(store),
       transactions: new InMemoryTransactionRepository(store),
+      outbox: new InMemoryOutboxRepository(store),
     };
   }
 

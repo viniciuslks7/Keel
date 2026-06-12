@@ -21,7 +21,7 @@ export class CreateAccount {
     // Money.of validates the currency code; the zero amount is irrelevant.
     Money.of(0, input.currency);
 
-    return this.uow.run(async ({ accounts }) => {
+    return this.uow.run(async ({ accounts, outbox }) => {
       await requireSystemAccount(accounts, input.currency);
 
       const account: Account = {
@@ -33,6 +33,14 @@ export class CreateAccount {
         createdAt: this.clock.now(),
       };
       await accounts.create(account);
+      await outbox.add({
+        id: this.ids.next(),
+        occurredAt: this.clock.now(),
+        type: 'AccountOpened',
+        accountId: account.id,
+        ownerName: account.ownerName,
+        currency: account.currency,
+      });
       return account;
     });
   }

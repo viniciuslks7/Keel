@@ -35,7 +35,7 @@ export class TransferFunds {
       throw new SelfTransferError();
     }
 
-    return this.uow.run(async ({ accounts, transactions }) => {
+    return this.uow.run(async ({ accounts, transactions, outbox }) => {
       const replayed = await findReplayedTransaction(transactions, input.idempotencyKey, {
         type: 'TRANSFER',
         amountCents: input.amountCents,
@@ -74,6 +74,16 @@ export class TransferFunds {
       });
 
       await transactions.save(transaction);
+      await outbox.add({
+        id: this.ids.next(),
+        occurredAt: this.clock.now(),
+        type: 'FundsTransferred',
+        fromAccountId: source.id,
+        toAccountId: destination.id,
+        amountCents: input.amountCents,
+        currency: source.currency,
+        transactionId: transaction.id,
+      });
       return transaction;
     });
   }
