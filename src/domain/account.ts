@@ -20,3 +20,7 @@ export interface Account {
 export function isTransactable(account: Account): boolean {
   return account.status === 'ACTIVE';
 }
+
+export function isSystem(account: Account): boolean {
+  return account.kind === 'SYSTEM';
+}

@@ -1,6 +1,7 @@
 import { ensureSystemAccounts } from '../src/application/bootstrap.js';
 import type { IdGenerator } from '../src/application/ports/id-generator.js';
 import type { StatementPage } from '../src/application/ports/transaction-repository.js';
+import { CloseAccount } from '../src/application/use-cases/close-account.js';
 import {
   CreateAccount,
   type CreateAccountInput,
@@ -51,6 +52,7 @@ export interface KeelDemo {
   readonly currencies: readonly string[];
   createAccount(input: CreateAccountInput): Promise<Account>;
   getAccount(id: string): Promise<Account>;
+  closeAccount(id: string): Promise<Account>;
   getBalance(id: string): Promise<BalanceView>;
   deposit(input: DepositFundsInput): Promise<Transaction>;
   withdraw(input: WithdrawFundsInput): Promise<Transaction>;
@@ -67,6 +69,7 @@ async function createKeel(currencies: readonly string[] = ['BRL', 'USD']): Promi
 
   const createAccount = new CreateAccount(uow, ids, clock);
   const getAccount = new GetAccount(uow);
+  const closeAccount = new CloseAccount(uow);
   const getBalance = new GetBalance(uow);
   const depositFunds = new DepositFunds(uow, ids, clock);
   const withdrawFunds = new WithdrawFunds(uow, ids, clock);
@@ -77,6 +80,7 @@ async function createKeel(currencies: readonly string[] = ['BRL', 'USD']): Promi
     currencies,
     createAccount: (input) => createAccount.execute(input),
     getAccount: (id) => getAccount.execute(id),
+    closeAccount: (id) => closeAccount.execute(id),
     getBalance: (id) => getBalance.execute(id),
     deposit: (input) => depositFunds.execute(input),
     withdraw: (input) => withdrawFunds.execute(input),

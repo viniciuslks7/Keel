@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ensureSystemAccounts } from '../../src/application/bootstrap.js';
 import type { Clock } from '../../src/application/ports/clock.js';
 import type { IdGenerator } from '../../src/application/ports/id-generator.js';
+import { CloseAccount } from '../../src/application/use-cases/close-account.js';
 import { CreateAccount } from '../../src/application/use-cases/create-account.js';
 import { DepositFunds } from '../../src/application/use-cases/deposit-funds.js';
 import { GetAccount } from '../../src/application/use-cases/get-account.js';
@@ -37,6 +38,7 @@ export interface TestContext {
   ids: RandomIds;
   createAccount: CreateAccount;
   getAccount: GetAccount;
+  closeAccount: CloseAccount;
   depositFunds: DepositFunds;
   withdrawFunds: WithdrawFunds;
   transferFunds: TransferFunds;
@@ -58,6 +60,7 @@ export async function buildTestContext(
     ids,
     createAccount: new CreateAccount(uow, ids, clock),
     getAccount: new GetAccount(uow),
+    closeAccount: new CloseAccount(uow),
     depositFunds: new DepositFunds(uow, ids, clock),
     withdrawFunds: new WithdrawFunds(uow, ids, clock),
     transferFunds: new TransferFunds(uow, ids, clock),

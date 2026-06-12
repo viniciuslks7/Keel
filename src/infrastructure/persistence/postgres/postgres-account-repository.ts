@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg';
 import type { AccountRepository } from '../../../application/ports/account-repository.js';
 import type { Account, AccountKind, AccountStatus } from '../../../domain/account.js';
+import { AccountNotFoundError } from '../../../domain/errors.js';
 
 interface AccountRow {
   id: string;
@@ -34,6 +35,16 @@ export class PostgresAccountRepository implements AccountRepository {
       id,
     ]);
     return result.rows[0] ? toAccount(result.rows[0]) : null;
+  }
+
+  async updateStatus(id: string, status: AccountStatus): Promise<void> {
+    const result = await this.client.query('UPDATE accounts SET status = $2 WHERE id = $1', [
+      id,
+      status,
+    ]);
+    if (result.rowCount === 0) {
+      throw new AccountNotFoundError(id);
+    }
   }
 
   async findSystemAccount(currency: string): Promise<Account | null> {

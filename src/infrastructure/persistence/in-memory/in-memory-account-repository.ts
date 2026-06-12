@@ -1,5 +1,5 @@
 import type { AccountRepository } from '../../../application/ports/account-repository.js';
-import type { Account } from '../../../domain/account.js';
+import type { Account, AccountStatus } from '../../../domain/account.js';
 import { AccountNotFoundError } from '../../../domain/errors.js';
 import type { InMemoryStore } from './in-memory-store.js';
 
@@ -8,6 +8,14 @@ export class InMemoryAccountRepository implements AccountRepository {
 
   async create(account: Account): Promise<void> {
     this.store.accounts.set(account.id, account);
+  }
+
+  async updateStatus(id: string, status: AccountStatus): Promise<void> {
+    const account = this.store.accounts.get(id);
+    if (!account) {
+      throw new AccountNotFoundError(id);
+    }
+    this.store.accounts.set(id, { ...account, status });
   }
 
   async findById(id: string): Promise<Account | null> {

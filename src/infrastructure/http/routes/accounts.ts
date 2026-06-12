@@ -22,6 +22,12 @@ export function registerAccountRoutes(app: FastifyInstance, deps: AppDependencie
     return presentAccount(account);
   });
 
+  app.post('/accounts/:accountId/close', async (request) => {
+    const { accountId } = accountParams.parse(request.params);
+    const account = await deps.closeAccount.execute(accountId);
+    return presentAccount(account);
+  });
+
   app.get('/accounts/:accountId/balance', async (request) => {
     const { accountId } = accountParams.parse(request.params);
     return deps.getBalance.execute(accountId);

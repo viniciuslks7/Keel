@@ -52,6 +52,20 @@ paths:
               schema: { $ref: '#/components/schemas/Account' }
         '404': { $ref: '#/components/responses/Problem' }
 
+  /accounts/{accountId}/close:
+    post:
+      summary: Close an account (requires a zero balance)
+      parameters: [{ $ref: '#/components/parameters/AccountId' }]
+      responses:
+        '200':
+          description: The closed account
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+
   /accounts/{accountId}/balance:
     get:
       summary: Current balance, derived from ledger entries

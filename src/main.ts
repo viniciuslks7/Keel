@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { ensureSystemAccounts } from './application/bootstrap.js';
+import { CloseAccount } from './application/use-cases/close-account.js';
 import { CreateAccount } from './application/use-cases/create-account.js';
 import { DepositFunds } from './application/use-cases/deposit-funds.js';
 import { GetAccount } from './application/use-cases/get-account.js';
@@ -31,6 +32,7 @@ async function main(): Promise<void> {
     {
       createAccount: new CreateAccount(uow, ids, clock),
       getAccount: new GetAccount(uow),
+      closeAccount: new CloseAccount(uow),
       depositFunds: new DepositFunds(uow, ids, clock),
       withdrawFunds: new WithdrawFunds(uow, ids, clock),
       transferFunds: new TransferFunds(uow, ids, clock),

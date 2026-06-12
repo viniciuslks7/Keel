@@ -113,6 +113,7 @@ Full spec: [`docs/openapi.yaml`](docs/openapi.yaml). Errors follow
 |---|---|---|
 | `POST` | `/accounts` | Open an account |
 | `GET` | `/accounts/:id` | Fetch an account |
+| `POST` | `/accounts/:id/close` | Close an account (requires zero balance) |
 | `GET` | `/accounts/:id/balance` | Balance derived from entries |
 | `GET` | `/accounts/:id/statement` | Keyset-paginated statement |
 | `POST` | `/accounts/:id/deposits` | Deposit (idempotent) |
@@ -191,7 +192,7 @@ the server. It deploys to GitHub Pages from `.github/workflows/pages.yml`.
 
 ## Roadmap
 
-- [ ] Account closing with zero-balance enforcement
+- [x] Account closing with zero-balance enforcement
 - [ ] Balance snapshots for hot accounts (materialized running balances)
 - [ ] Multi-currency transfers via FX rate legs
 - [ ] Outbox + event publishing for downstream consumers

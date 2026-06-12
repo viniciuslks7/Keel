@@ -293,6 +293,12 @@
         color: var(--text);
         filter: none;
       }
+      button.link.danger {
+        color: var(--red);
+      }
+      button.link.danger:hover {
+        color: #ffb4b4;
+      }
       button:disabled {
         opacity: 0.45;
         cursor: not-allowed;
@@ -602,6 +608,7 @@
           <div class="id-row">
             <code id="bal-id" title=""></code>
             <button class="link" type="button" id="btn-copy">copy id</button>
+            <button class="link danger" type="button" id="btn-close">close account</button>
           </div>
 
           <div class="actions-grid">
@@ -801,7 +808,7 @@
             <span class="avatar" aria-hidden="true">${initials(a.ownerName)}</span>
             <span class="meta">
               <span class="name">${escapeHtml(a.ownerName)}</span>
-              <span class="sub">${a.currency} · ${shortId(a.id)}</span>
+              <span class="sub">${a.currency} · ${shortId(a.id)}${a.closed ? ' · closed' : ''}</span>
             </span>
             <span class="bal">${bal}</span>`;
           btn.addEventListener('click', () => select(a.id));
@@ -838,6 +845,7 @@
         $('statement-card').classList.remove('is-hidden');
         $('bal-id').textContent = id;
         $('bal-id').title = id;
+        $('btn-close').classList.toggle('is-hidden', Boolean(acc.closed));
         renderAccounts();
         await loadBalance();
         await loadStatement(true);
@@ -961,6 +969,21 @@
           ok('Account id copied.');
         } catch {
           fail({ message: 'Clipboard unavailable.' });
+        }
+      });
+
+      $('btn-close').addEventListener('click', async () => {
+        const id = state.selectedId;
+        const acc = state.accounts.find((a) => a.id === id);
+        if (!acc) return;
+        try {
+          await ledger.closeAccount(id);
+          acc.closed = true;
+          ok(`Account ${acc.ownerName} closed.`);
+          renderAccounts();
+          $('btn-close').classList.add('is-hidden');
+        } catch (e) {
+          fail(e);
         }
       });
 

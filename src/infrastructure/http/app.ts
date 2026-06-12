@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import type { CloseAccount } from '../../application/use-cases/close-account.js';
 import type { CreateAccount } from '../../application/use-cases/create-account.js';
 import type { DepositFunds } from '../../application/use-cases/deposit-funds.js';
 import type { GetAccount } from '../../application/use-cases/get-account.js';
@@ -18,6 +19,7 @@ import { registerTransferRoutes } from './routes/transfers.js';
 export interface AppDependencies {
   readonly createAccount: CreateAccount;
   readonly getAccount: GetAccount;
+  readonly closeAccount: CloseAccount;
   readonly depositFunds: DepositFunds;
   readonly withdrawFunds: WithdrawFunds;
   readonly transferFunds: TransferFunds;

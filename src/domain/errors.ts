@@ -4,10 +4,12 @@ export type DomainErrorCode =
   | 'CURRENCY_MISMATCH'
   | 'ACCOUNT_NOT_FOUND'
   | 'ACCOUNT_CLOSED'
+  | 'ACCOUNT_NOT_EMPTY'
   | 'INSUFFICIENT_FUNDS'
   | 'UNBALANCED_TRANSACTION'
   | 'IDEMPOTENCY_CONFLICT'
   | 'SYSTEM_ACCOUNT_MISSING'
+  | 'SYSTEM_ACCOUNT_PROTECTED'
   | 'SELF_TRANSFER'
   | 'INVALID_CURSOR';
 
@@ -55,6 +57,22 @@ export class InsufficientFundsError extends DomainError {
     super(
       `account ${accountId} holds ${balanceCents} cents but ${requestedCents} cents were requested`,
     );
+  }
+}
+
+export class AccountNotEmptyError extends DomainError {
+  readonly code = 'ACCOUNT_NOT_EMPTY';
+
+  constructor(accountId: string, balanceCents: number) {
+    super(`account ${accountId} cannot be closed while it holds ${balanceCents} cents`);
+  }
+}
+
+export class SystemAccountProtectedError extends DomainError {
+  readonly code = 'SYSTEM_ACCOUNT_PROTECTED';
+
+  constructor(accountId: string) {
+    super(`account ${accountId} is a SYSTEM treasury account and cannot be closed`);
   }
 }
 

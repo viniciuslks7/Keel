@@ -113,6 +113,35 @@ describe('HTTP API', () => {
     expect(response.json().title).toBe('ACCOUNT_NOT_FOUND');
   });
 
+  it('POST /accounts/:id/close closes an empty account, then blocks deposits', async () => {
+    const accountId = await createAccount();
+
+    const close = await app.inject({ method: 'POST', url: `/accounts/${accountId}/close` });
+    expect(close.statusCode).toBe(200);
+    expect(close.json().status).toBe('CLOSED');
+
+    const deposit = await app.inject({
+      method: 'POST',
+      url: `/accounts/${accountId}/deposits`,
+      payload: { amountCents: 100 },
+    });
+    expect(deposit.statusCode).toBe(409);
+    expect(deposit.json().title).toBe('ACCOUNT_CLOSED');
+  });
+
+  it('refuses to close a funded account with 409 problem+json', async () => {
+    const accountId = await createAccount();
+    await app.inject({
+      method: 'POST',
+      url: `/accounts/${accountId}/deposits`,
+      payload: { amountCents: 5_000 },
+    });
+
+    const close = await app.inject({ method: 'POST', url: `/accounts/${accountId}/close` });
+    expect(close.statusCode).toBe(409);
+    expect(close.json().title).toBe('ACCOUNT_NOT_EMPTY');
+  });
+
   it('POST /transfers moves money between accounts', async () => {
     const alice = await createAccount();
     const bob = await createAccount();

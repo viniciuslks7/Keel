@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  AccountClosedError,
+  AccountNotEmptyError,
   CurrencyMismatchError,
   IdempotencyConflictError,
   InsufficientFundsError,
   InvalidAmountError,
   SelfTransferError,
+  SystemAccountProtectedError,
 } from '../../src/domain/errors.js';
 import { buildTestContext, type TestContext } from '../helpers/fixed-deps.js';
 
@@ -227,6 +230,52 @@ describe('ledger use cases', () => {
       });
       expect(lastPage.entries.map((e) => e.amountCents)).toEqual([100]);
       expect(lastPage.nextCursor).toBeNull();
+    });
+  });
+
+  describe('close', () => {
+    it('closes an empty account and blocks further movement', async () => {
+      const accountId = await openAccount();
+      const closed = await ctx.closeAccount.execute(accountId);
+      expect(closed.status).toBe('CLOSED');
+
+      await expect(ctx.depositFunds.execute({ accountId, amountCents: 100 })).rejects.toThrow(
+        AccountClosedError,
+      );
+    });
+
+    it('refuses to close an account that still holds funds', async () => {
+      const accountId = await openAccount();
+      await ctx.depositFunds.execute({ accountId, amountCents: 500 });
+
+      await expect(ctx.closeAccount.execute(accountId)).rejects.toThrow(AccountNotEmptyError);
+      expect((await ctx.getAccount.execute(accountId)).status).toBe('ACTIVE');
+    });
+
+    it('lets an account be emptied and then closed', async () => {
+      const accountId = await openAccount();
+      await ctx.depositFunds.execute({ accountId, amountCents: 500 });
+      await ctx.withdrawFunds.execute({ accountId, amountCents: 500 });
+
+      const closed = await ctx.closeAccount.execute(accountId);
+      expect(closed.status).toBe('CLOSED');
+    });
+
+    it('is idempotent: closing an already-closed account is a no-op', async () => {
+      const accountId = await openAccount();
+      await ctx.closeAccount.execute(accountId);
+      const again = await ctx.closeAccount.execute(accountId);
+      expect(again.status).toBe('CLOSED');
+    });
+
+    it('protects SYSTEM treasury accounts from being closed', async () => {
+      const system = await ctx.uow.run(({ accounts }) => accounts.findSystemAccount('BRL'));
+      expect(system).not.toBeNull();
+      if (system) {
+        await expect(ctx.closeAccount.execute(system.id)).rejects.toThrow(
+          SystemAccountProtectedError,
+        );
+      }
     });
   });
 
