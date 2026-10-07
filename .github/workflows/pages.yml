@@ -18,6 +18,23 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: keel_ci
+          # Disposable test database; reachable only on this runner's loopback.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: keel_test
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U keel_ci -d keel_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      KEEL_TEST_DATABASE_URL: postgres://keel_ci@127.0.0.1:5432/keel_test
     steps:
       - uses: actions/checkout@v4
 
@@ -28,6 +45,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Validate the exact revision before publication
+        run: |
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
 
       - name: Build demo bundle
         run: npm run build:demo

@@ -29,8 +29,8 @@ export class DepositFunds {
     return this.uow.run(async ({ accounts, transactions, outbox }) => {
       const replayed = await findReplayedTransaction(transactions, input.idempotencyKey, {
         type: 'DEPOSIT',
-        amountCents: input.amountCents,
-        accountIds: [input.accountId],
+        entryCount: 2,
+        legs: [{ accountId: input.accountId, direction: 'CREDIT', amountCents: input.amountCents }],
       });
       if (replayed) {
         return replayed;
@@ -39,6 +39,7 @@ export class DepositFunds {
       const account = await requireActiveAccount(accounts, input.accountId);
       const system = await requireSystemAccount(accounts, account.currency);
       await accounts.lockForUpdate([account.id, system.id]);
+      await requireActiveAccount(accounts, account.id);
 
       const amount = Money.of(input.amountCents, account.currency);
       const transaction = postTransaction({

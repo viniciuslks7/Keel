@@ -38,8 +38,11 @@ export class TransferFunds {
     return this.uow.run(async ({ accounts, transactions, outbox }) => {
       const replayed = await findReplayedTransaction(transactions, input.idempotencyKey, {
         type: 'TRANSFER',
-        amountCents: input.amountCents,
-        accountIds: [input.fromAccountId, input.toAccountId],
+        entryCount: 2,
+        legs: [
+          { accountId: input.fromAccountId, direction: 'DEBIT', amountCents: input.amountCents },
+          { accountId: input.toAccountId, direction: 'CREDIT', amountCents: input.amountCents },
+        ],
       });
       if (replayed) {
         return replayed;
@@ -54,6 +57,8 @@ export class TransferFunds {
       }
 
       await accounts.lockForUpdate([source.id, destination.id]);
+      await requireActiveAccount(accounts, source.id);
+      await requireActiveAccount(accounts, destination.id);
 
       const balanceCents = await transactions.balanceOf(source.id);
       if (balanceCents < input.amountCents) {

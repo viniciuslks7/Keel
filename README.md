@@ -1,6 +1,6 @@
 # Keel
 
-> A double-entry ledger service that makes losing money a type error.
+> A simulated wallet built on an append-only double-entry ledger.
 
 [![CI](https://github.com/viniciuslks7/Keel/actions/workflows/ci.yml/badge.svg)](https://github.com/viniciuslks7/Keel/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=node.js&logoColor=white)
@@ -12,7 +12,7 @@
 **▶ [Try the live demo](https://viniciuslks7.github.io/Keel/)** — open accounts, deposit,
 withdraw, transfer and page through statements right in the browser. There is no backend:
 the **same** domain and use-case code that runs on the server is compiled to run client-side
-against the in-memory adapter.
+against the in-memory adapter. All balances and names are fictional; no real money or payments are involved.
 
 Keel is the bookkeeping core of a digital wallet: accounts, deposits,
 withdrawals and transfers, built the way payment companies actually build
@@ -21,19 +21,20 @@ column. The name comes from the part of a ship that keeps it balanced.
 
 **Why this exists:** most wallet demos increment a `balance` field and call
 it a day. That design cannot answer "why is this balance wrong?" and quietly
-loses money under concurrency. Keel demonstrates the production-grade
-alternative, end to end, in ~1.5k lines of strict TypeScript.
+loses money under concurrency. Keel demonstrates that design in strict TypeScript as an educational portfolio project.
+It is not a production financial service: authentication, authorization, operational
+controls and real payment integrations are outside its scope.
 
 ---
 
-## Guarantees
+## Design invariants and verification
 
 | Invariant | How it's enforced |
 |---|---|
 | Money is never created or destroyed | Every transaction posts balanced DEBIT/CREDIT entries through a single domain function; unbalanced postings cannot be constructed |
-| No overdrafts, even under concurrency | `SELECT … FOR UPDATE` row locks acquired **before** the balance read; verified by a test firing 5 parallel withdrawals |
-| No deadlocks between transfers | Locks always acquired in ascending account-id order — deterministic ordering makes deadlock impossible by construction |
-| Client retries never double-post | `Idempotency-Key` header backed by a unique constraint; identical replays return the original transaction, divergent reuse gets `409` |
+| No overdrafts, even under concurrency | `SELECT … FOR UPDATE` row locks acquired **before** the balance read; covered by an in-memory test firing 5 parallel withdrawals; live PostgreSQL concurrency requires integration verification |
+| No deadlocks between transfers | Locks always acquired in ascending account-id order — deterministic ordering avoids opposing account-lock acquisition |
+| Client retries never double-post | `Idempotency-Key` header with a transaction-scoped PostgreSQL advisory lock and unique constraint; matching account/direction/amount legs replay, divergent reuse gets `409` |
 | No floating-point money | `Money` value object holds integer minor units only; fractional or unsafe amounts are rejected at construction |
 | Full audit trail | Entries are append-only — no UPDATE/DELETE path exists; every balance always reconciles to `SUM()` over entries (the materialized total is a cache rebuilt from them) |
 
@@ -164,7 +165,7 @@ npm run dev
 **Quality gates (no database needed):**
 
 ```bash
-npm test           # 40 tests, in-memory, ~1s
+npm test           # 93 tests: domain, use cases, API and adapter boundaries
 npm run typecheck  # strict TS, NodeNext ESM
 npm run lint       # Biome
 ```
@@ -183,6 +184,23 @@ them on `window`. esbuild compiles the real `src/domain` and `src/application`
 code to run in the browser — the ledger's invariants (balanced postings,
 idempotent retries, overdraft protection) hold client-side exactly as they do on
 the server. It deploys to GitHub Pages from `.github/workflows/pages.yml`.
+
+### Demo review
+
+The demo starts with three clearly labeled fictional accounts. Use **Reset demo** to
+clear this tab's accounts, ledger entries and idempotency keys; cancel keeps the data.
+Reload creates fresh samples. Nothing is persisted across reloads or shared between tabs.
+The UI covers deposits, withdrawals, same-currency transfers, closing and statements;
+FX, the outbox and PostgreSQL live in the server project, not this browser UI.
+
+For a retry example, deposit 10.50 with key `review-1`, then repeat it. The balance
+changes once. Changing the amount under the same key produces a conflict. Entering
+1.005, zero, an exponent or an unsafe amount is rejected without rounding.
+
+See [the local audit changelog](docs/review-2026-10-06.md) for fixes, evidence and
+verification limits. FX idempotency compares source/destination amounts **after
+rounding**: different raw rates that produce the same posting replay the original.
+The rate is not persisted on the transaction; exact raw-rate identity remains a limitation.
 
 ## Tech choices, briefly
 

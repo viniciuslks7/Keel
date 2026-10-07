@@ -281,4 +281,45 @@ describe('HTTP API', () => {
     expect(response.statusCode).toBe(400);
     expect(response.json().title).toBe('INVALID_CURSOR');
   });
+
+  it('returns 400 problem+json for encoded invalid cursor fields', async () => {
+    const accountId = await createAccount();
+    const cursor = btoa(JSON.stringify({ createdAt: '2026-02-30T00:00:00.000Z', id: 'bad-id' }));
+    const response = await app.inject({
+      method: 'GET',
+      url: `/accounts/${accountId}/statement?cursor=${encodeURIComponent(cursor)}`,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.headers['content-type']).toContain('application/problem+json');
+    expect(response.json().title).toBe('INVALID_CURSOR');
+  });
+
+  it('returns 409 for reversed transfer retries without posting again', async () => {
+    const a = await createAccount();
+    const b = await createAccount();
+    await app.inject({
+      method: 'POST',
+      url: `/accounts/${a}/deposits`,
+      payload: { amountCents: 1000 },
+    });
+    const headers = { 'idempotency-key': 'reversed' };
+    const first = await app.inject({
+      method: 'POST',
+      url: '/transfers',
+      headers,
+      payload: { fromAccountId: a, toAccountId: b, amountCents: 200 },
+    });
+    expect(first.statusCode).toBe(201);
+    const reversed = await app.inject({
+      method: 'POST',
+      url: '/transfers',
+      headers,
+      payload: { fromAccountId: b, toAccountId: a, amountCents: 200 },
+    });
+    expect(reversed.statusCode).toBe(409);
+    expect(reversed.json().title).toBe('IDEMPOTENCY_CONFLICT');
+    expect(
+      (await app.inject({ method: 'GET', url: `/accounts/${a}/balance` })).json().balanceCents,
+    ).toBe(800);
+  });
 });

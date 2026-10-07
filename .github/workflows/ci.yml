@@ -31,6 +31,36 @@ jobs:
       - name: Build
         run: npm run build
 
+  postgres:
+    runs-on: ubuntu-latest
+    needs: verify
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: keel_ci
+          # Disposable test database; reachable only on this runner's loopback.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: keel_test
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U keel_ci -d keel_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      KEEL_TEST_DATABASE_URL: postgres://keel_ci@127.0.0.1:5432/keel_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Real PostgreSQL concurrency and rollback
+        run: npm run test:postgres
+
   docker:
     runs-on: ubuntu-latest
     needs: verify

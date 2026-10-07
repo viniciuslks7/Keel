@@ -52,9 +52,11 @@ event through the outbox. It refuses a same-currency pair, pointing callers at
   is still valid, and the only new acceptance is a posting that balances each
   currency. The domain test that asserted single-currency now asserts the
   per-currency rule, plus a balanced cross-currency posting succeeds.
-- Idempotency fingerprints a replay by a transaction's total credited cents,
-  which for an exchange is the source leg plus the converted destination leg;
-  the shared helper's contract was made explicit to say so.
+- Idempotency compares customer account ids, entry directions, individual source
+  and rounded destination amounts, and the four-entry shape. Summing credited
+  amounts is insufficient: distinct exchanges can share the same total. Different
+  raw rates yielding identical rounded postings are treated as a replay; the raw
+  rate is not stored on the transaction.
 - Materialized balances (ADR-0008) needed no change: an exchange is just four
   ordinary entries, folded into four balance rows like any other.
 - The FX rate is the caller's input, not a stored rate table. A rates provider
