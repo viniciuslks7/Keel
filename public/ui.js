@@ -143,7 +143,7 @@ function renderTransferSelects() {
   if ($('tr-to').selectedIndex === $('tr-from').selectedIndex && state.accounts.length > 1) {
     $('tr-to').selectedIndex = 1;
   }
-  $('transfer-card').classList.toggle('is-hidden', state.accounts.length < 2);
+  $('transfer-card').classList.toggle('is-hidden', !state.selectedId || state.accounts.length < 2);
 }
 
 function renderAll() {
@@ -153,6 +153,17 @@ function renderAll() {
 }
 
 // ---------- selection & detail ----------
+function clearSelection() {
+  state.selectedId = null;
+  state.cursor = null;
+  for (const id of ['detail', 'statement-card', 'transfer-card']) $(id).classList.add('is-hidden');
+  $('statement').replaceChildren();
+  $('stmt-count').textContent = '';
+  $('btn-more').classList.add('is-hidden');
+  renderAccounts();
+  updateClosedForms();
+}
+
 async function select(id, navigate = true, focus = false) {
   state.selectedId = id;
   const acc = state.accounts.find((a) => a.id === id);
@@ -165,6 +176,7 @@ async function select(id, navigate = true, focus = false) {
   $('bal-id').title = id;
   $('btn-close').classList.toggle('is-hidden', Boolean(acc.closed));
   renderAccounts();
+  renderTransferSelects();
   await loadBalance();
   await loadStatement(true);
   updateClosedForms();
@@ -381,7 +393,8 @@ async function boot(withSamples = true) {
 }
 
 function updateClosedForms() {
-  const closed = Boolean(state.accounts.find((a) => a.id === state.selectedId)?.closed);
+  const closed =
+    !state.selectedId || Boolean(state.accounts.find((a) => a.id === state.selectedId)?.closed);
   for (const id of ['form-deposit', 'form-withdraw']) {
     $(id)
       .querySelectorAll('input, button')
@@ -426,24 +439,33 @@ document.addEventListener(
 );
 $('btn-back').addEventListener('click', () => {
   history.pushState(null, '', '#accounts-panel');
+  clearSelection();
   $('accounts-panel').scrollIntoView();
   $('accounts').querySelector('button')?.focus();
 });
 window.addEventListener('popstate', () => {
   const id = location.hash.startsWith('#account=') ? location.hash.slice(9) : null;
   if (id && state.accounts.some((a) => a.id === id)) guard(() => select(id, false));
+  else clearSelection();
 });
+// Section links scroll within the selected account without creating an overview history entry.
+for (const link of document.querySelectorAll('a[href="#detail"], a[href="#statement-card"]')) {
+  link.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    const target = state.selectedId ? $(link.hash.slice(1)) : $('accounts-panel');
+    target.scrollIntoView();
+    if (state.selectedId) target.focus();
+    else $('accounts').querySelector('button')?.focus();
+  });
+}
 $('btn-reset').addEventListener('click', () => $('reset-dialog').showModal());
 $('reset-cancel').addEventListener('click', () => $('reset-dialog').close());
 $('reset-confirm').addEventListener('click', async () => {
   await guard(async () => {
     $('reset-dialog').close();
     state.accounts = [];
-    state.selectedId = null;
-    state.cursor = null;
+    clearSelection();
     state.seenTransactions.clear();
-    for (const id of ['detail', 'statement-card', 'transfer-card'])
-      $(id).classList.add('is-hidden');
     document.querySelectorAll('form').forEach((form) => {
       form.reset();
     });
