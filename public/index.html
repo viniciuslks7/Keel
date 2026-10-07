@@ -20,7 +20,7 @@
         --border-strong: #2b3e4d;
         --text: #e7eef5;
         --muted: #8597a8;
-        --faint: #5d6e7d;
+        --faint: #96a8b8;
         --accent: #2dd4bf;
         --accent-press: #5fe3d3;
         --accent-dim: #155e57;
@@ -46,6 +46,7 @@
         margin: 0;
         min-height: 100vh;
         background: var(--bg-grad) fixed;
+        background-color: var(--bg);
         color: var(--text);
         font-family: var(--font);
         font-size: 15px;
@@ -553,9 +554,33 @@
         color: var(--faint);
         font-size: 12.5px;
       }
+      .skip-link { position: absolute; left: 16px; top: -100px; padding: 12px; background: var(--panel); z-index: 100; }
+      .skip-link:focus { top: 12px; }
+      .intro { max-width: 1200px; margin: auto; padding: 28px clamp(16px, 4vw, 34px) 0; }
+      .intro h2 { font-size: clamp(24px, 4vw, 36px); margin: 0 0 8px; letter-spacing: -0.5px; }
+      .intro p { max-width: 760px; color: var(--muted); margin: 0 0 16px; }
+      nav { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+      nav a { padding: 10px 0; }
+      .table-wrap { overflow-x: auto; }
+      .account .meta span { display: block; }
+      #selected-name { font-size: 18px; color: var(--text); margin: 0 0 12px; }
+      .id-row { flex-wrap: wrap; }
+      .id-row code { max-width: 100%; }
+      section { scroll-margin-top: 110px; }
+      dialog { color: var(--text); background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--r-lg); max-width: min(440px, 90vw); padding: 24px; }
+      dialog::backdrop { background: #000a; }
+      #reset-title { margin-top: 0; }
+      dialog .buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+      #feedback { color: var(--muted); min-height: 24px; margin-top: 14px; }
+      #feedback.error { color: var(--red); }
+      a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+      @media (max-width: 600px) { header { flex-wrap: wrap; position: static; gap: 10px; } .brand { width: 100%; } header .spacer { display: none; } .card { padding: 16px; } td.when { white-space: normal; } .account { gap: 8px; padding: 10px; } .account .avatar { display: none; } .account .bal { font-size: 12px; } }
+      .table-wrap caption { margin: 0; padding-bottom: 12px; }
+      @media (prefers-reduced-motion: reduce) { input, select, button, .account, .toast { animation: none; transition: none; } }
     </style>
   </head>
   <body>
+    <a class="skip-link" href="#workspace">Skip to ledger</a>
     <header>
       <div class="brand">
         <span class="mark" aria-hidden="true">⚓</span>
@@ -571,9 +596,21 @@
       </a>
     </header>
 
+    <section class="intro" id="overview" aria-labelledby="intro-title">
+      <h2 id="intro-title">Explore how a wallet keeps its balance.</h2>
+      <p>Move fictional funds, inspect both sides of a transfer and safely retry a request with the same key. This portfolio demo uses the real TypeScript domain core in memory.</p>
+      <p><strong>Simulation only.</strong> No real money, payments, login or database connection. Data stays in this tab and disappears on reload or reset. Sample names and balances are fictional. The server project also demonstrates FX and an outbox; this UI covers same-currency movements.</p>
+      <nav aria-label="Demo navigation">
+        <a href="#accounts-panel">Accounts</a>
+        <a href="#detail">Movement</a>
+        <a href="#statement-card">Statement</a>
+        <button class="ghost" id="btn-reset" type="button">Reset demo</button>
+      </nav>
+      <p id="feedback" role="status" aria-live="polite" aria-atomic="true">Loading sample accounts…</p>
+    </section>
     <section class="summary" id="summary" aria-label="Portfolio totals"></section>
 
-    <main>
+    <main id="workspace" tabindex="-1">
       <!-- left -->
       <div class="col">
         <section class="card">
@@ -591,7 +628,7 @@
           </form>
         </section>
 
-        <section class="card">
+        <section class="card" id="accounts-panel">
           <h2>Accounts <span class="count" id="acc-count"></span></h2>
           <div class="accounts" id="accounts"></div>
         </section>
@@ -599,8 +636,10 @@
 
       <!-- right -->
       <div class="col">
-        <section class="card is-hidden" id="detail" aria-live="polite">
+        <section class="card is-hidden" id="detail" tabindex="-1">
           <h2>Selected account</h2>
+          <p id="selected-name"></p>
+          <button class="link" id="btn-back" type="button">Back to accounts</button>
           <div class="balance-hero">
             <span class="amount" id="bal-amount">—</span>
             <span class="ccy" id="bal-ccy"></span>
@@ -611,17 +650,18 @@
             <button class="link danger" type="button" id="btn-close">close account</button>
           </div>
 
+          <p class="hint">Use up to two decimals (100.00 or 100,00). Reuse a key and amount to replay; change the amount to see a conflict. A blank key creates a new movement.</p>
           <div class="actions-grid">
             <div class="subcard">
               <h3><span class="dot in"></span>Deposit</h3>
               <form id="form-deposit">
                 <div class="field">
                   <label for="dep-amt">Amount</label>
-                  <input id="dep-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="100.00" required />
+                  <input id="dep-amt" type="text" maxlength="20" inputmode="decimal" placeholder="100.00" required />
                 </div>
                 <div class="field">
                   <label for="dep-key">Idempotency-Key (optional)</label>
-                  <input id="dep-key" placeholder="dep-2026-001" autocomplete="off" />
+                  <input id="dep-key" maxlength="255" placeholder="dep-2026-001" autocomplete="off" />
                 </div>
                 <button class="block" type="submit">Deposit</button>
               </form>
@@ -632,11 +672,11 @@
               <form id="form-withdraw">
                 <div class="field">
                   <label for="wd-amt">Amount</label>
-                  <input id="wd-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="50.00" required />
+                  <input id="wd-amt" type="text" maxlength="20" inputmode="decimal" placeholder="50.00" required />
                 </div>
                 <div class="field">
                   <label for="wd-key">Idempotency-Key (optional)</label>
-                  <input id="wd-key" placeholder="wd-2026-001" autocomplete="off" />
+                  <input id="wd-key" maxlength="255" placeholder="wd-2026-001" autocomplete="off" />
                 </div>
                 <button class="block ghost" type="submit">Withdraw</button>
               </form>
@@ -660,11 +700,11 @@
             <div class="grid-2">
               <div class="field">
                 <label for="tr-amt">Amount</label>
-                <input id="tr-amt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="40.00" required />
+                <input id="tr-amt" type="text" maxlength="20" inputmode="decimal" placeholder="40.00" required />
               </div>
               <div class="field">
                 <label for="tr-key">Idempotency-Key (optional)</label>
-                <input id="tr-key" placeholder="tr-2026-001" autocomplete="off" />
+                <input id="tr-key" maxlength="255" placeholder="tr-2026-001" autocomplete="off" />
               </div>
             </div>
             <button class="block" type="submit">Transfer</button>
@@ -673,7 +713,8 @@
 
         <section class="card is-hidden" id="statement-card">
           <h2>Statement <span class="count" id="stmt-count"></span></h2>
-          <table>
+          <div class="table-wrap"><table>
+            <caption class="hint">Newest first · credits add funds, debits remove funds</caption>
             <thead>
               <tr>
                 <th>When</th>
@@ -682,7 +723,7 @@
               </tr>
             </thead>
             <tbody id="statement"></tbody>
-          </table>
+          </table></div>
           <div class="empty is-hidden" id="stmt-empty">No entries yet.</div>
           <button class="block ghost is-hidden" type="button" id="btn-more" style="margin-top: 14px">
             Load more
@@ -697,328 +738,14 @@
       <a href="https://github.com/viniciuslks7/Keel" target="_blank" rel="noopener">GitHub</a>.
     </footer>
 
-    <div id="toasts" aria-live="assertive"></div>
+    <dialog id="reset-dialog" aria-labelledby="reset-title" aria-describedby="reset-description">
+      <h2 id="reset-title">Reset this demo?</h2>
+      <p id="reset-description">All accounts, balances, entries and retry keys in this tab will be removed. You can load fresh fictional data afterwards.</p>
+      <div class="buttons"><button type="button" id="reset-cancel" class="ghost" autofocus>Cancel</button><button type="button" id="reset-confirm">Clear all data</button></div>
+    </dialog>
+    <div id="toasts" aria-hidden="true"></div>
 
     <script src="./app.js"></script>
-    <script type="module">
-      const $ = (id) => document.getElementById(id);
-      const state = { accounts: [], selectedId: null, cursor: null };
-      let ledger;
-
-      // ---------- helpers ----------
-      function fmt(cents, currency) {
-        const locale = currency === 'BRL' ? 'pt-BR' : 'en-US';
-        try {
-          return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
-        } catch {
-          return `${(cents / 100).toFixed(2)} ${currency}`;
-        }
-      }
-      function bareAmount(cents) {
-        return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-          cents / 100,
-        );
-      }
-      function toCents(value) {
-        const n = Number.parseFloat(String(value).replace(',', '.'));
-        if (!Number.isFinite(n) || n <= 0) return null;
-        return Math.round(n * 100);
-      }
-      const initials = (name) => (name.trim().slice(0, 2) || '??').toUpperCase();
-      const shortId = (id) => `${id.slice(0, 8)}…${id.slice(-4)}`;
-      const accCcy = (id) => state.accounts.find((a) => a.id === id)?.currency ?? '';
-      function escapeHtml(s) {
-        return s.replace(
-          /[&<>"']/g,
-          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
-        );
-      }
-
-      function toast(title, message, kind) {
-        const el = document.createElement('div');
-        el.className = `toast ${kind}`;
-        el.innerHTML = '<div class="t"></div><div class="m"></div>';
-        el.querySelector('.t').textContent = title;
-        el.querySelector('.m').textContent = message;
-        $('toasts').appendChild(el);
-        setTimeout(() => el.remove(), 4600);
-      }
-      const ok = (msg) => toast('Done', msg, 'ok');
-      const fail = (e) => toast(e?.code ?? 'Error', e?.message ?? String(e), 'err');
-
-      // ---------- rendering ----------
-      async function refreshBalances() {
-        await Promise.all(
-          state.accounts.map(async (a) => {
-            try {
-              a.balanceCents = (await ledger.getBalance(a.id)).balanceCents;
-            } catch {
-              a.balanceCents = undefined;
-            }
-          }),
-        );
-      }
-
-      function renderSummary() {
-        const totals = {};
-        for (const a of state.accounts) {
-          if (a.balanceCents === undefined) continue;
-          totals[a.currency] = (totals[a.currency] ?? 0) + a.balanceCents;
-        }
-        const entries = Object.entries(totals);
-        const box = $('summary');
-        box.innerHTML = '';
-        const accountsStat = `
-          <div class="stat">
-            <div class="k">Accounts</div>
-            <div class="v">${state.accounts.length}</div>
-          </div>`;
-        const currencyStats = entries
-          .map(
-            ([ccy, cents]) => `
-            <div class="stat">
-              <div class="k">Custodied · ${ccy}</div>
-              <div class="v">${fmt(cents, ccy)}</div>
-            </div>`,
-          )
-          .join('');
-        box.innerHTML = state.accounts.length ? accountsStat + currencyStats : '';
-      }
-
-      function renderAccounts() {
-        const box = $('accounts');
-        $('acc-count').textContent = state.accounts.length ? `${state.accounts.length}` : '';
-        if (state.accounts.length === 0) {
-          box.innerHTML = `
-            <div class="empty">
-              No accounts yet.
-              <div><button class="ghost" type="button" id="btn-seed">Seed demo data</button></div>
-            </div>`;
-          $('btn-seed').addEventListener('click', seed);
-          return;
-        }
-        box.innerHTML = '';
-        for (const a of state.accounts) {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'account';
-          btn.setAttribute('aria-current', String(a.id === state.selectedId));
-          const bal = a.balanceCents === undefined ? '—' : fmt(a.balanceCents, a.currency);
-          btn.innerHTML = `
-            <span class="avatar" aria-hidden="true">${initials(a.ownerName)}</span>
-            <span class="meta">
-              <span class="name">${escapeHtml(a.ownerName)}</span>
-              <span class="sub">${a.currency} · ${shortId(a.id)}${a.closed ? ' · closed' : ''}</span>
-            </span>
-            <span class="bal">${bal}</span>`;
-          btn.addEventListener('click', () => select(a.id));
-          box.appendChild(btn);
-        }
-      }
-
-      function renderTransferSelects() {
-        for (const sel of [$('tr-from'), $('tr-to')]) {
-          const prev = sel.value;
-          sel.innerHTML = state.accounts
-            .map((a) => `<option value="${a.id}">${escapeHtml(a.ownerName)} · ${a.currency}</option>`)
-            .join('');
-          if (prev && state.accounts.some((a) => a.id === prev)) sel.value = prev;
-        }
-        if ($('tr-to').selectedIndex === $('tr-from').selectedIndex && state.accounts.length > 1) {
-          $('tr-to').selectedIndex = 1;
-        }
-        $('transfer-card').classList.toggle('is-hidden', state.accounts.length < 2);
-      }
-
-      function renderAll() {
-        renderSummary();
-        renderAccounts();
-        renderTransferSelects();
-      }
-
-      // ---------- selection & detail ----------
-      async function select(id) {
-        state.selectedId = id;
-        const acc = state.accounts.find((a) => a.id === id);
-        if (!acc) return;
-        $('detail').classList.remove('is-hidden');
-        $('statement-card').classList.remove('is-hidden');
-        $('bal-id').textContent = id;
-        $('bal-id').title = id;
-        $('btn-close').classList.toggle('is-hidden', Boolean(acc.closed));
-        renderAccounts();
-        await loadBalance();
-        await loadStatement(true);
-      }
-
-      async function loadBalance() {
-        const id = state.selectedId;
-        try {
-          const b = await ledger.getBalance(id);
-          $('bal-amount').textContent = bareAmount(b.balanceCents);
-          $('bal-ccy').textContent = b.currency;
-          const acc = state.accounts.find((a) => a.id === id);
-          if (acc) acc.balanceCents = b.balanceCents;
-          renderSummary();
-        } catch (e) {
-          fail(e);
-        }
-      }
-
-      async function loadStatement(reset) {
-        const id = state.selectedId;
-        const tbody = $('statement');
-        if (reset) {
-          tbody.innerHTML = '';
-          state.cursor = null;
-        }
-        try {
-          const page = await ledger.statement(
-            state.cursor ? { accountId: id, limit: 8, cursor: state.cursor } : { accountId: id, limit: 8 },
-          );
-          for (const e of page.entries) {
-            const inflow = e.direction === 'CREDIT';
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td class="when">${new Date(e.createdAt).toLocaleString()}</td>
-              <td><span class="tag"><span class="dot ${inflow ? 'in' : 'out'}"></span>${inflow ? 'credit' : 'debit'}</span></td>
-              <td class="amt ${inflow ? 'in' : 'out'}">${inflow ? '+' : '−'}${fmt(e.amountCents, e.currency)}</td>`;
-            tbody.appendChild(tr);
-          }
-          state.cursor = page.nextCursor;
-          $('stmt-count').textContent = tbody.children.length ? `${tbody.children.length} shown` : '';
-          $('btn-more').classList.toggle('is-hidden', !page.nextCursor);
-          $('stmt-empty').classList.toggle('is-hidden', tbody.children.length > 0);
-        } catch (e) {
-          fail(e);
-        }
-      }
-
-      // ---------- actions ----------
-      $('form-create').addEventListener('submit', async (ev) => {
-        ev.preventDefault();
-        const ownerName = $('acc-name').value.trim();
-        const currency = $('acc-ccy').value;
-        if (!ownerName) return;
-        try {
-          const acc = await ledger.createAccount({ ownerName, currency });
-          state.accounts.push({ id: acc.id, ownerName: acc.ownerName, currency: acc.currency, balanceCents: 0 });
-          $('acc-name').value = '';
-          ok(`Account opened for ${acc.ownerName}.`);
-          renderAll();
-          select(acc.id);
-        } catch (e) {
-          fail(e);
-        }
-      });
-
-      async function move(kind, amtEl, keyEl) {
-        const id = state.selectedId;
-        const amountCents = toCents(amtEl.value);
-        if (amountCents === null) return fail({ message: 'Enter a valid positive amount.' });
-        const key = keyEl.value.trim() || undefined;
-        try {
-          const input = key ? { accountId: id, amountCents, idempotencyKey: key } : { accountId: id, amountCents };
-          await (kind === 'deposit' ? ledger.deposit(input) : ledger.withdraw(input));
-          amtEl.value = '';
-          ok(`${kind === 'deposit' ? 'Deposited' : 'Withdrew'} ${fmt(amountCents, accCcy(id))}.`);
-          await loadBalance();
-          renderAccounts();
-          await loadStatement(true);
-        } catch (e) {
-          fail(e);
-        }
-      }
-      $('form-deposit').addEventListener('submit', (ev) => {
-        ev.preventDefault();
-        move('deposit', $('dep-amt'), $('dep-key'));
-      });
-      $('form-withdraw').addEventListener('submit', (ev) => {
-        ev.preventDefault();
-        move('withdraw', $('wd-amt'), $('wd-key'));
-      });
-
-      $('form-transfer').addEventListener('submit', async (ev) => {
-        ev.preventDefault();
-        const fromAccountId = $('tr-from').value;
-        const toAccountId = $('tr-to').value;
-        const amountCents = toCents($('tr-amt').value);
-        if (amountCents === null) return fail({ message: 'Enter a valid positive amount.' });
-        const key = $('tr-key').value.trim() || undefined;
-        try {
-          const base = { fromAccountId, toAccountId, amountCents };
-          await ledger.transfer(key ? { ...base, idempotencyKey: key } : base);
-          $('tr-amt').value = '';
-          ok(`Transferred ${fmt(amountCents, accCcy(fromAccountId))}.`);
-          await refreshBalances();
-          renderAccounts();
-          renderSummary();
-          if (state.selectedId) {
-            await loadBalance();
-            await loadStatement(true);
-          }
-        } catch (e) {
-          fail(e);
-        }
-      });
-
-      $('btn-more').addEventListener('click', () => loadStatement(false));
-      $('btn-copy').addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(state.selectedId);
-          ok('Account id copied.');
-        } catch {
-          fail({ message: 'Clipboard unavailable.' });
-        }
-      });
-
-      $('btn-close').addEventListener('click', async () => {
-        const id = state.selectedId;
-        const acc = state.accounts.find((a) => a.id === id);
-        if (!acc) return;
-        try {
-          await ledger.closeAccount(id);
-          acc.closed = true;
-          ok(`Account ${acc.ownerName} closed.`);
-          renderAccounts();
-          $('btn-close').classList.add('is-hidden');
-        } catch (e) {
-          fail(e);
-        }
-      });
-
-      async function seed() {
-        try {
-          const ada = await ledger.createAccount({ ownerName: 'Ada Lovelace', currency: 'BRL' });
-          const linus = await ledger.createAccount({ ownerName: 'Linus Torvalds', currency: 'BRL' });
-          const grace = await ledger.createAccount({ ownerName: 'Grace Hopper', currency: 'USD' });
-          await ledger.deposit({ accountId: ada.id, amountCents: 250_00 });
-          await ledger.deposit({ accountId: grace.id, amountCents: 1_000_00 });
-          await ledger.transfer({ fromAccountId: ada.id, toAccountId: linus.id, amountCents: 90_00 });
-          await ledger.withdraw({ accountId: linus.id, amountCents: 15_00 });
-          for (const a of [ada, linus, grace]) {
-            state.accounts.push({ id: a.id, ownerName: a.ownerName, currency: a.currency });
-          }
-          await refreshBalances();
-          ok('Seeded three accounts with sample activity.');
-          renderAll();
-          select(linus.id);
-        } catch (e) {
-          fail(e);
-        }
-      }
-
-      // ---------- boot ----------
-      async function boot() {
-        if (typeof globalThis.createKeel !== 'function') {
-          fail({ message: 'Demo bundle failed to load (app.js). Run "npm run build:demo".' });
-          return;
-        }
-        ledger = await globalThis.createKeel(['BRL', 'USD']);
-        $('acc-ccy').innerHTML = ledger.currencies.map((c) => `<option>${c}</option>`).join('');
-        renderAll();
-      }
-      boot();
-    </script>
+    <script defer src="./ui.js"></script>
   </body>
 </html>

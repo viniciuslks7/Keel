@@ -21,13 +21,20 @@ export function encodeCursor(cursor: StatementCursor): string {
 
 export function decodeCursor(raw: string): StatementCursor {
   try {
+    if (raw.length > 512 || !/^[A-Za-z0-9_-]+$/.test(raw)) throw new InvalidCursorError();
     const base64 = raw.replaceAll('-', '+').replaceAll('_', '/');
     const parsed: unknown = JSON.parse(atob(base64));
     if (
       typeof parsed === 'object' &&
       parsed !== null &&
       typeof (parsed as StatementCursor).createdAt === 'string' &&
-      typeof (parsed as StatementCursor).id === 'string'
+      typeof (parsed as StatementCursor).id === 'string' &&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test((parsed as StatementCursor).createdAt) &&
+      new Date((parsed as StatementCursor).createdAt).toISOString() ===
+        (parsed as StatementCursor).createdAt &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+        (parsed as StatementCursor).id,
+      )
     ) {
       return parsed as StatementCursor;
     }

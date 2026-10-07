@@ -4,6 +4,7 @@ import type {
   StatementQuery,
   TransactionRepository,
 } from '../../../application/ports/transaction-repository.js';
+import { InvalidMoneyError } from '../../../domain/errors.js';
 import type {
   EntryDirection,
   LedgerEntry,
@@ -31,6 +32,10 @@ interface TransactionRow {
 
 export class PostgresTransactionRepository implements TransactionRepository {
   constructor(private readonly client: PoolClient) {}
+
+  async lockIdempotencyKey(key: string): Promise<void> {
+    await this.client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key]);
+  }
 
   async save(transaction: Transaction): Promise<void> {
     await this.client.query(
@@ -64,14 +69,16 @@ export class PostgresTransactionRepository implements TransactionRepository {
     // them. The callers already hold a FOR UPDATE lock on every account they
     // touch, which serializes concurrent writers to the same balance row.
     for (const [accountId, delta] of deltas) {
-      await this.client.query(
+      const result = await this.client.query<{ balance_cents: string }>(
         `INSERT INTO account_balances (account_id, balance_cents, updated_at)
          VALUES ($1, $2, now())
          ON CONFLICT (account_id) DO UPDATE
            SET balance_cents = account_balances.balance_cents + EXCLUDED.balance_cents,
-               updated_at = now()`,
+               updated_at = now()
+         RETURNING balance_cents`,
         [accountId, delta],
       );
+      safeCents(result.rows[0]?.balance_cents ?? '0');
     }
   }
 
@@ -108,7 +115,7 @@ export class PostgresTransactionRepository implements TransactionRepository {
        WHERE account_id = $1`,
       [accountId],
     );
-    return Number(result.rows[0]?.balance ?? 0);
+    return safeCents(result.rows[0]?.balance ?? '0');
   }
 
   async statementOf(query: StatementQuery): Promise<StatementPage> {
@@ -148,8 +155,15 @@ function toEntry(row: EntryRow): LedgerEntry {
     transactionId: row.transaction_id,
     accountId: row.account_id,
     direction: row.direction,
-    amountCents: Number(row.amount_cents),
+    amountCents: safeCents(row.amount_cents),
     currency: row.currency,
     createdAt: row.created_at,
   };
+}
+
+function safeCents(raw: string): number {
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value))
+    throw new InvalidMoneyError('balance exceeds safe integer minor units');
+  return value;
 }

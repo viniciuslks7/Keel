@@ -1,17 +1,15 @@
 import { IdempotencyConflictError } from '../domain/errors.js';
-import type { Transaction, TransactionType } from '../domain/transaction.js';
+import type { EntryDirection, Transaction, TransactionType } from '../domain/transaction.js';
 import type { TransactionRepository } from './ports/transaction-repository.js';
 
 export interface IdempotentRequestShape {
   readonly type: TransactionType;
-  /**
-   * Total credited cents the operation produces, summed across all its legs.
-   * For a single-currency movement this equals the amount moved; for a
-   * cross-currency exchange it is the source leg plus the converted
-   * destination leg. Used only as a replay fingerprint, never as money.
-   */
-  readonly amountCents: number;
-  readonly accountIds: readonly string[];
+  readonly entryCount: number;
+  readonly legs: readonly {
+    accountId: string;
+    direction: EntryDirection;
+    amountCents: number;
+  }[];
 }
 
 /**
@@ -28,20 +26,26 @@ export async function findReplayedTransaction(
     return null;
   }
 
+  // PostgreSQL serializes requests sharing a key before the lookup. The lock
+  // lasts until commit/rollback, including requests touching different accounts.
+  await transactions.lockIdempotencyKey(key);
+
   const existing = await transactions.findByIdempotencyKey(key);
   if (!existing) {
     return null;
   }
 
-  const storedAccountIds = new Set(existing.entries.map((entry) => entry.accountId));
-  const storedAmount = existing.entries
-    .filter((entry) => entry.direction === 'CREDIT')
-    .reduce((total, entry) => total + entry.amountCents, 0);
-
   const matches =
     existing.type === request.type &&
-    storedAmount === request.amountCents &&
-    request.accountIds.every((id) => storedAccountIds.has(id));
+    existing.entries.length === request.entryCount &&
+    request.legs.every((leg) =>
+      existing.entries.some(
+        (entry) =>
+          entry.accountId === leg.accountId &&
+          entry.direction === leg.direction &&
+          entry.amountCents === leg.amountCents,
+      ),
+    );
 
   if (!matches) {
     throw new IdempotencyConflictError(key);

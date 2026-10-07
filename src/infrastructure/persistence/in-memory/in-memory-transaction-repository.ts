@@ -3,10 +3,14 @@ import type {
   StatementQuery,
   TransactionRepository,
 } from '../../../application/ports/transaction-repository.js';
+import { Money } from '../../../domain/money.js';
 import type { LedgerEntry, Transaction } from '../../../domain/transaction.js';
 import { decodeCursor, encodeCursor } from '../cursor.js';
 
 export class InMemoryTransactionRepository implements TransactionRepository {
+  async lockIdempotencyKey(_key: string): Promise<void> {
+    // InMemoryUnitOfWork already serializes the entire transaction.
+  }
   constructor(
     private readonly store: { transactions: Transaction[]; balances: Map<string, number> },
   ) {}
@@ -25,7 +29,7 @@ export class InMemoryTransactionRepository implements TransactionRepository {
       const delta = entry.direction === 'CREDIT' ? entry.amountCents : -entry.amountCents;
       this.store.balances.set(
         entry.accountId,
-        (this.store.balances.get(entry.accountId) ?? 0) + delta,
+        Money.of((this.store.balances.get(entry.accountId) ?? 0) + delta, entry.currency).cents,
       );
     }
   }
@@ -46,16 +50,16 @@ export class InMemoryTransactionRepository implements TransactionRepository {
       .sort(byNewestFirst);
 
     const startAfter = query.cursor ? decodeCursor(query.cursor) : null;
-    const startIndex = startAfter
-      ? all.findIndex(
+    const eligible = startAfter
+      ? all.filter(
           (entry) =>
-            entry.createdAt.toISOString() === startAfter.createdAt && entry.id === startAfter.id,
-        ) + 1
-      : 0;
-
-    const page = all.slice(startIndex, startIndex + query.limit);
+            entry.createdAt.toISOString() < startAfter.createdAt ||
+            (entry.createdAt.toISOString() === startAfter.createdAt && entry.id < startAfter.id),
+        )
+      : all;
+    const page = eligible.slice(0, query.limit);
     const last = page[page.length - 1];
-    const hasMore = startIndex + query.limit < all.length;
+    const hasMore = query.limit < eligible.length;
 
     return {
       entries: page,
@@ -69,5 +73,5 @@ export class InMemoryTransactionRepository implements TransactionRepository {
 
 function byNewestFirst(a: LedgerEntry, b: LedgerEntry): number {
   const byDate = b.createdAt.getTime() - a.createdAt.getTime();
-  return byDate !== 0 ? byDate : b.id.localeCompare(a.id);
+  return byDate !== 0 ? byDate : a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
 }

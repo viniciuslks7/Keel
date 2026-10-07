@@ -17,6 +17,7 @@ export class CloseAccount {
 
   async execute(accountId: string): Promise<Account> {
     return this.uow.run(async ({ accounts, transactions, outbox }) => {
+      await accounts.lockForUpdate([accountId]);
       const account = await accounts.findById(accountId);
       if (!account) {
         throw new AccountNotFoundError(accountId);
@@ -32,7 +33,6 @@ export class CloseAccount {
 
       // Lock before the balance read: a concurrent deposit must not slip in
       // between the zero check and the close.
-      await accounts.lockForUpdate([accountId]);
       const balanceCents = await transactions.balanceOf(accountId);
       if (balanceCents !== 0) {
         throw new AccountNotEmptyError(accountId, balanceCents);
