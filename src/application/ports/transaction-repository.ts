@@ -12,6 +12,8 @@ export interface StatementQuery {
 }
 
 export interface TransactionRepository {
+  /** Serialize a key within the current unit of work, before replay lookup. */
+  lockIdempotencyKey(key: string): Promise<void>;
   save(transaction: Transaction): Promise<void>;
   findByIdempotencyKey(key: string): Promise<Transaction | null>;
   balanceOf(accountId: string): Promise<number>;

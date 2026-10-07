@@ -51,17 +51,22 @@ export class ExchangeFunds {
     }
 
     const toAmountCents = Math.round(input.fromAmountCents * input.rate);
-    if (toAmountCents <= 0) {
-      throw new InvalidAmountError('converted amount rounds to zero at the given rate');
+    if (!Number.isSafeInteger(toAmountCents) || toAmountCents <= 0) {
+      throw new InvalidAmountError('converted amount must be positive safe integer cents');
     }
 
     return this.uow.run(async ({ accounts, transactions, outbox }) => {
       const replayed = await findReplayedTransaction(transactions, input.idempotencyKey, {
         type: 'TRANSFER',
-        // Fingerprint is the transaction's total credited cents (ADR-0009):
-        // the source leg into its treasury plus the converted destination leg.
-        amountCents: input.fromAmountCents + toAmountCents,
-        accountIds: [input.fromAccountId, input.toAccountId],
+        entryCount: 4,
+        legs: [
+          {
+            accountId: input.fromAccountId,
+            direction: 'DEBIT',
+            amountCents: input.fromAmountCents,
+          },
+          { accountId: input.toAccountId, direction: 'CREDIT', amountCents: toAmountCents },
+        ],
       });
       if (replayed) {
         return replayed;
@@ -84,6 +89,8 @@ export class ExchangeFunds {
         sourceTreasury.id,
         destinationTreasury.id,
       ]);
+      await requireActiveAccount(accounts, source.id);
+      await requireActiveAccount(accounts, destination.id);
 
       const balanceCents = await transactions.balanceOf(source.id);
       if (balanceCents < input.fromAmountCents) {
